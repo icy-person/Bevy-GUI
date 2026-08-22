@@ -1,5 +1,7 @@
-use bevy::prelude::*;
+use bevy::camera_controller::free_camera::{FreeCamera, FreeCameraPlugin};
+use bevy::dev_tools::infinite_grid::{InfiniteGrid, InfiniteGridPlugin};
 use bevy::picking::prelude::*;
+use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts, EguiPlugin, EguiPrimaryContextPass};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -30,6 +32,8 @@ impl Plugin for BevyGuiPlugin {
             EguiPlugin::default(),
             DefaultPickingPlugins,
             TransformGizmoPlugin,
+            FreeCameraPlugin,
+            InfiniteGridPlugin,
         ))
         .init_resource::<SelectionState>()
         .init_resource::<ProjectState>()
@@ -105,8 +109,14 @@ fn setup_editor_scene(
     commands.spawn((
         Camera3d::default(),
         Transform::from_xyz(7.0, 5.0, 8.0).looking_at(Vec3::ZERO, Vec3::Y),
+        FreeCamera::default(),
         TransformGizmoCamera,
         Name::new("Editor Camera"),
+    ));
+
+    commands.spawn((
+        InfiniteGrid,
+        Name::new("Editor Grid"),
     ));
 
     commands.spawn((
