@@ -13,7 +13,11 @@ pub fn save_editor_project(
     state: &mut EditorUiState,
     entities: &[(Entity, String, Transform, Option<Entity>)],
 ) {
-    let document = SceneDocument::from_world(entities.iter().copied());
+    let document = SceneDocument::from_world(
+        entities
+            .iter()
+            .map(|(entity, name, transform, parent)| (*entity, name.clone(), *transform, *parent)),
+    );
     let relative = project
         .main_scene
         .clone()
