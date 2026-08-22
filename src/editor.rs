@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_egui::egui;
 use std::collections::BTreeMap;
 
-use crate::{EditorCommandRegistry, PanelRegistry, ProjectState, SelectionState};
+use crate::{EditorCommandRegistry, ProjectState, SelectionState};
 
 pub trait EditorPanel: Send + Sync + 'static {
     fn id(&self) -> &'static str;
