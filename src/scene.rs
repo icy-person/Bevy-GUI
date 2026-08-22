@@ -69,3 +69,28 @@ pub fn load_scene(path: &Path) -> Result<SceneDocument, SceneIoError> {
     let json = fs::read_to_string(path).map_err(SceneIoError::Read)?;
     serde_json::from_str(&json).map_err(SceneIoError::Parse)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bevy::prelude::Vec3;
+
+    #[test]
+    fn scene_json_round_trip() {
+        let document = SceneDocument::from_entities([(
+            "Player".to_owned(),
+            Transform {
+                translation: Vec3::new(1.0, 2.0, 3.0),
+                rotation: Quat::from_rotation_y(0.5),
+                scale: Vec3::splat(2.0),
+            },
+        )]);
+        let json = serde_json::to_string(&document).expect("scene serialization should succeed");
+        let restored: SceneDocument = serde_json::from_str(&json).expect("scene parsing should succeed");
+        assert_eq!(restored.format_version, 1);
+        assert_eq!(restored.entities.len(), 1);
+        assert_eq!(restored.entities[0].name, "Player");
+        assert_eq!(restored.entities[0].translation, [1.0, 2.0, 3.0]);
+        assert_eq!(restored.entities[0].scale, [2.0, 2.0, 2.0]);
+    }
+}
