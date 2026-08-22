@@ -89,6 +89,14 @@ fn setup_editor_scene(
 #[derive(Resource)]
 struct InitialSelected(Entity);
 
+enum EditorPanel {
+    Hierarchy,
+    Inspector,
+    Assets,
+    Console,
+    Profiler,
+}
+
 fn editor_ui_system(
     mut contexts: EguiContexts,
     mut state: ResMut<EditorUiState>,
@@ -143,13 +151,20 @@ fn editor_ui_system(
         ui.horizontal(|ui| {
             ui.label(project.name.as_str());
             ui.separator();
-            for (label, open) in [
-                ("Hierarchy", &mut state.show_hierarchy),
-                ("Inspector", &mut state.show_inspector),
-                ("Assets", &mut state.show_assets),
-                ("Console", &mut state.show_console),
-                ("Profiler", &mut state.show_profiler),
+            for (label, panel) in [
+                ("Hierarchy", EditorPanel::Hierarchy),
+                ("Inspector", EditorPanel::Inspector),
+                ("Assets", EditorPanel::Assets),
+                ("Console", EditorPanel::Console),
+                ("Profiler", EditorPanel::Profiler),
             ] {
+                let open = match panel {
+                    EditorPanel::Hierarchy => &mut state.show_hierarchy,
+                    EditorPanel::Inspector => &mut state.show_inspector,
+                    EditorPanel::Assets => &mut state.show_assets,
+                    EditorPanel::Console => &mut state.show_console,
+                    EditorPanel::Profiler => &mut state.show_profiler,
+                };
                 ui.checkbox(open, label);
             }
             ui.separator();
