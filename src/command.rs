@@ -28,6 +28,10 @@ impl EditorCommandRegistry {
     pub fn contains(&self, id: EditorCommandId) -> bool {
         self.commands.contains_key(&id)
     }
+
+    pub fn get(&self, id: EditorCommandId) -> Option<&EditorCommand> {
+        self.commands.get(&id)
+    }
 }
 
 #[derive(Resource, Default)]
@@ -42,5 +46,46 @@ impl EditorCommandBus {
 
     pub fn drain(&mut self) -> impl Iterator<Item = EditorCommandId> + '_ {
         std::iter::from_fn(move || self.queue.pop_front())
+    }
+
+    pub fn len(&self) -> usize {
+        self.queue.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.queue.is_empty()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn registry_replaces_commands_by_id() {
+        let mut registry = EditorCommandRegistry::default();
+        registry.register(EditorCommand {
+            id: EditorCommandId("test"),
+            label: "Test",
+            shortcut: None,
+        });
+        registry.register(EditorCommand {
+            id: EditorCommandId("test"),
+            label: "Replacement",
+            shortcut: Some("F1"),
+        });
+        assert_eq!(registry.iter().count(), 1);
+        assert_eq!(registry.get(EditorCommandId("test")).unwrap().label, "Replacement");
+    }
+
+    #[test]
+    fn command_bus_is_fifo() {
+        let mut bus = EditorCommandBus::default();
+        bus.emit(EditorCommandId("first"));
+        bus.emit(EditorCommandId("second"));
+        assert_eq!(bus.len(), 2);
+        let ids: Vec<_> = bus.drain().collect();
+        assert_eq!(ids, vec![EditorCommandId("first"), EditorCommandId("second")]);
+        assert!(bus.is_empty());
     }
 }
