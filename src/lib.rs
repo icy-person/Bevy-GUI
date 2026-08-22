@@ -5,6 +5,7 @@
 pub mod app;
 pub mod assets;
 pub mod command;
+pub mod command_executor;
 pub mod docking;
 pub mod editor;
 pub mod history;
@@ -21,6 +22,7 @@ pub mod viewport;
 pub use app::BevyGuiPlugin;
 pub use assets::{AssetDatabase, AssetEntry, AssetKind};
 pub use command::{EditorCommand, EditorCommandBus, EditorCommandId, EditorCommandRegistry};
+pub use command_executor::CommandExecutionState;
 pub use docking::{EditorDockState, EditorTab};
 pub use editor::{EditorPanel, EditorPanelContext, EditorPlugin, EditorPluginRegistry};
 pub use history::{TransformHistory, TransformSnapshot};
