@@ -4,6 +4,7 @@ use bevy_egui::EguiPlugin;
 use crate::{
     assets::install_asset_database,
     command::{EditorCommand, EditorCommandBus, EditorCommandId, EditorCommandRegistry},
+    command_executor::{execute_editor_commands, CommandExecutionState},
     docking::EditorDockState,
     editor::register_builtin_state,
     plugins::install_builtin_editor_plugins,
@@ -21,6 +22,7 @@ impl Plugin for BevyGuiPlugin {
             .init_resource::<ProjectState>()
             .init_resource::<EditorCommandRegistry>()
             .init_resource::<EditorCommandBus>()
+            .init_resource::<CommandExecutionState>()
             .init_resource::<EditorDockState>()
             .init_resource::<SceneEditorState>();
 
@@ -29,7 +31,8 @@ impl Plugin for BevyGuiPlugin {
         install_builtin_editor_plugins(app);
         install_viewport(app);
         install_editor_ui(app);
-        app.add_systems(Startup, register_default_commands);
+        app.add_systems(Startup, register_default_commands)
+            .add_systems(Update, execute_editor_commands);
     }
 }
 
