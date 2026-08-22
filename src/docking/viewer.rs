@@ -17,10 +17,12 @@ pub struct DockViewer<'a> {
     pub entities: &'a [(Entity, String)],
     pub parents: &'a [(Entity, Option<Entity>)],
     pub selected_transform: Option<TransformEdit>,
+    pub selected_name: Option<String>,
     pub assets: &'a [String],
     pub plugin_names: &'a [String],
     pub command_count: usize,
     pub transform_edit: Option<TransformEdit>,
+    pub name_edit: Option<String>,
     pub viewport_focused: bool,
     pub create_entity: bool,
     pub delete_entity: Option<Entity>,
@@ -160,6 +162,15 @@ impl DockViewer<'_> {
         ui.separator();
         if let Some(mut edit) = self.selected_transform {
             ui.label(format!("Primary Entity {:?}", edit.entity));
+            if let Some(mut name) = self.selected_name.clone() {
+                ui.horizontal(|ui| {
+                    ui.label("Name");
+                    ui.text_edit_singleline(&mut name);
+                    if ui.button("Apply").clicked() {
+                        self.name_edit = Some(name.clone());
+                    }
+                });
+            }
             ui.separator();
             ui.collapsing("Transform", |ui| {
                 for (label, value) in [
@@ -180,6 +191,12 @@ impl DockViewer<'_> {
             } else {
                 self.selected_transform = Some(edit);
             }
+            ui.separator();
+            ui.collapsing("Components", |ui| {
+                ui.label("Transform");
+                ui.label("Name");
+                ui.label("Mesh3d / Material references are editor-owned components.");
+            });
         } else {
             ui.weak("Nothing selected");
         }
