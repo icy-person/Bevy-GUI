@@ -9,13 +9,14 @@ use crate::{
 use crate::docking::{DockViewer, TransformEdit};
 use crate::viewport::EditorEntity;
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct UiActions {
     pub create_entity: bool,
     pub delete_entity: Option<Entity>,
     pub duplicate_entity: Option<Entity>,
     pub save_requested: bool,
     pub transform_edit: Option<TransformEdit>,
+    pub name_edit: Option<String>,
     pub parent_selected: bool,
     pub unparent_selected: bool,
 }
@@ -28,6 +29,7 @@ impl UiActions {
             duplicate_entity: viewer.duplicate_entity,
             save_requested: viewer.save_requested,
             transform_edit: viewer.transform_edit,
+            name_edit: viewer.name_edit.clone(),
             parent_selected: viewer.parent_selected,
             unparent_selected: viewer.unparent_selected,
         }
@@ -106,6 +108,13 @@ pub fn apply_entity_actions(
                 relation.0 = None;
             }
         }
+        project.dirty = true;
+    }
+
+    if let Some(name) = actions.name_edit
+        && let Some(entity) = selection.primary()
+    {
+        commands.entity(entity).insert(Name::new(name));
         project.dirty = true;
     }
 
