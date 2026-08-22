@@ -1,7 +1,14 @@
 //! 2D editor viewport: orthographic camera, grid, pan/zoom and 2D authoring helpers.
 
-use bevy::{input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll, MouseButton}, prelude::*};
-use crate::{editor::{EditorUiState, ViewportMode}, settings::EditorSettingsState};
+use bevy::{
+    input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll, MouseButton},
+    prelude::*,
+};
+
+use crate::{
+    editor::{EditorUiState, ViewportMode},
+    settings::EditorSettingsState,
+};
 
 #[derive(Component)]
 pub struct Editor2dCamera;
@@ -18,19 +25,19 @@ pub struct Editor2dState {
 pub fn install_2d_viewport(app: &mut App) {
     app.init_resource::<Editor2dState>()
         .add_systems(Startup, setup_2d_world)
-        .add_systems(Update, (sync_2d_visibility, control_2d_camera).chain());
+        .add_systems(
+            Update,
+            (sync_2d_visibility, control_2d_camera, draw_2d_grid).chain(),
+        );
 }
 
 fn setup_2d_world(
     mut commands: Commands,
-    settings: Res<EditorSettingsState>,
     mut state: ResMut<Editor2dState>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
-    let camera = commands
-        .spawn((Camera2d, Editor2dCamera, Visibility::Hidden))
-        .id();
+    let camera = commands.spawn((Camera2d, Editor2dCamera, Visibility::Hidden)).id();
     state.camera = Some(camera);
 
     let positions = [
@@ -52,14 +59,10 @@ fn setup_2d_world(
         ));
     }
     state.initialized = true;
-    if settings.settings.editor.start_in_2d {
-        // Visibility is selected by the editor state system on the first frame.
-    }
 }
 
 fn sync_2d_visibility(
     editor: Res<EditorUiState>,
-    state: Res<Editor2dState>,
     mut cameras: Query<&mut Visibility, With<Editor2dCamera>>,
     mut entities: Query<&mut Visibility, With<Editor2dEntity>>,
 ) {
@@ -70,7 +73,6 @@ fn sync_2d_visibility(
     for mut visibility in &mut entities {
         *visibility = if visible { Visibility::Inherited } else { Visibility::Hidden };
     }
-    let _ = state.initialized;
 }
 
 fn control_2d_camera(
@@ -84,7 +86,7 @@ fn control_2d_camera(
     if editor.viewport_mode != ViewportMode::TwoD {
         return;
     }
-    let Ok((mut transform, mut projection)) = cameras.single_mut() else { return; };
+    let Ok((mut transform, mut projection)) = cameras.single_mut() else { return };
 
     if mouse_buttons.pressed(MouseButton::Middle) && motion.delta != Vec2::ZERO {
         let speed = settings.settings.viewport.camera_pan_speed.max(0.01);
@@ -95,7 +97,25 @@ fn control_2d_camera(
     if scroll.delta.y.abs() > f32::EPSILON {
         let zoom_speed = settings.settings.viewport.camera_zoom_speed.max(0.01);
         if let Projection::Orthographic(ref mut ortho) = *projection {
-            ortho.scale = (ortho.scale * (-scroll.delta.y * 0.1 * zoom_speed).exp()).clamp(0.05, 100.0);
+            ortho.scale =
+                (ortho.scale * (-scroll.delta.y * 0.1 * zoom_speed).exp()).clamp(0.05, 100.0);
         }
     }
+}
+
+fn draw_2d_grid(
+    editor: Res<EditorUiState>,
+    settings: Res<EditorSettingsState>,
+    mut gizmos: Gizmos,
+) {
+    if editor.viewport_mode != ViewportMode::TwoD || !settings.settings.viewport.grid_2d {
+        return;
+    }
+    let spacing = settings.settings.viewport.grid_size.max(0.05);
+    gizmos.grid_2d(
+        Isometry2d::IDENTITY,
+        UVec2::new(60, 60),
+        Vec2::splat(spacing),
+        Color::srgba(0.35, 0.35, 0.42, 0.22),
+    );
 }
