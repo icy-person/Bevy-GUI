@@ -13,6 +13,7 @@ use crate::{
     history::{TransformHistory, TransformSnapshot},
     plugins::install_builtin_editor_plugins,
     project::{EditorMode, ProjectState},
+    scene::{save_scene, SceneDocument},
     selection::SelectionState,
 };
 
@@ -99,6 +100,11 @@ fn register_default_commands(mut registry: ResMut<EditorCommandRegistry>) {
         label: "Redo",
         shortcut: Some("Ctrl+Y"),
     });
+    registry.register(EditorCommand {
+        id: EditorCommandId("scene.save"),
+        label: "Save Scene",
+        shortcut: Some("Ctrl+Shift+S"),
+    });
 }
 
 fn setup_editor_scene(
@@ -114,10 +120,7 @@ fn setup_editor_scene(
         Name::new("Editor Camera"),
     ));
 
-    commands.spawn((
-        InfiniteGrid,
-        Name::new("Editor Grid"),
-    ));
+    commands.spawn((InfiniteGrid, Name::new("Editor Grid")));
 
     commands.spawn((
         DirectionalLight {
@@ -144,9 +147,7 @@ fn setup_editor_scene(
         ))
         .id();
 
-    commands
-        .entity(cube)
-        .observe(select_clicked_entity);
+    commands.entity(cube).observe(select_clicked_entity);
     commands.insert_resource(InitialSelected(cube));
 }
 
@@ -228,9 +229,6 @@ fn keyboard_editor_shortcuts(
     if keys.just_pressed(KeyCode::F8) {
         project.mode = EditorMode::Edit;
     }
-    if ctrl && keys.just_pressed(KeyCode::KeyS) {
-        project.dirty = false;
-    }
 }
 
 fn editor_mode_tick(time: Res<Time>, project: Res<ProjectState>) {
@@ -272,6 +270,7 @@ fn editor_ui_system(
     mut commands: Commands,
 ) -> Result {
     let ctx = contexts.ctx_mut()?;
+    let mut save_requested = false;
 
     egui::Panel::top("editor_menu").show(ctx, |ui| {
         ui.horizontal(|ui| {
@@ -284,13 +283,10 @@ fn editor_ui_system(
             }
             ui.separator();
             if ui.button("Save").clicked() {
-                project.dirty = false;
+                save_requested = true;
             }
             if ui.button("Undo").clicked() {
-                state.status = format!("Undo stack: {}", history.undo_len());
-            }
-            if ui.button("Redo").clicked() {
-                state.status = format!("Redo stack: {}", history.redo_len());
+                history.undo(&mut transforms.into_iter().map(|transform| transform.into()));
             }
             ui.separator();
             ui.label(format!("Mode: {:?}", project.mode));
@@ -341,15 +337,56 @@ fn editor_ui_system(
         command_count,
         transform_edit: None,
         viewport_focused: false,
+        create_entity: false,
+        delete_entity: None,
+        save_requested: false,
     };
 
     egui::CentralPanel::default().show(ctx, |ui| {
         show_dock_area(ui, &mut dock, &mut viewer);
     });
 
-    if let Some(edit) = viewer.transform_edit {
+    let create_entity = viewer.create_entity;
+    let delete_entity = viewer.delete_entity;
+    save_requested |= viewer.save_requested;
+    let transform_edit = viewer.transform_edit;
+    drop(viewer);
+
+    if create_entity {
+        let entity = commands
+            .spawn((Transform::default(), Name::new("Entity"), Pickable::default()))
+            .id();
+        commands.entity(entity).observe(select_clicked_entity);
+        selection.select(entity);
+        project.dirty = true;
+    }
+
+    if let Some(entity) = delete_entity {
+        commands.entity(entity).despawn();
+        selection.clear();
+        project.dirty = true;
+    }
+
+    if let Some(edit) = transform_edit {
         if let Ok(current) = transforms.get(edit.entity) {
             history_push_and_apply(&mut history, &mut commands, &mut project, edit, *current);
+        }
+    }
+
+    if save_requested {
+        let items = entities
+            .iter()
+            .filter_map(|(entity, name)| transforms.get(*entity).ok().map(|transform| (name.clone(), *transform)));
+        let document = SceneDocument::from_entities(items);
+        let path = project.root.join(".bevy-gui").join("untitled.scene.json");
+        match save_scene(&path, &document) {
+            Ok(()) => {
+                project.dirty = false;
+                state.status = format!("Saved {} entities to {}", document.entities.len(), path.display());
+            }
+            Err(error) => {
+                state.status = format!("Save failed: {error}");
+            }
         }
     }
 
