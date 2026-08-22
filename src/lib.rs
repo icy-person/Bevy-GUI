@@ -1,11 +1,13 @@
-//! Bevy-GUI: a plugin-first editor shell for Bevy.
+//! Bevy-GUI: a plugin-first editor kernel for Bevy.
 //!
-//! The editor is split into small plugins and registries so new panels, tools,
-//! commands and services can be added without changing the editor kernel.
+//! Core services are intentionally small and replaceable: plugins, panels,
+//! commands, selection, docking and transform history are independent layers.
 
 pub mod app;
 pub mod command;
+pub mod docking;
 pub mod editor;
+pub mod history;
 pub mod panel;
 pub mod plugins;
 pub mod project;
@@ -13,7 +15,9 @@ pub mod selection;
 
 pub use app::BevyGuiPlugin;
 pub use command::{EditorCommand, EditorCommandId, EditorCommandRegistry};
+pub use docking::{EditorDockState, EditorTab};
 pub use editor::{EditorPanel, EditorPanelContext, EditorPlugin, EditorPluginRegistry};
+pub use history::{TransformHistory, TransformSnapshot};
 pub use panel::PanelRegistry;
 pub use project::ProjectState;
 pub use selection::SelectionState;
