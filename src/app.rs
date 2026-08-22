@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
+use egui::containers::panel::{CentralPanel, SidePanel, TopBottomPanel};
 
 use crate::{
     command::{EditorCommand, EditorCommandId, EditorCommandRegistry},
@@ -104,7 +105,7 @@ fn editor_ui_system(
         selection.select(initial.0);
     }
 
-    egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
+    TopBottomPanel::top("menu_bar").show(ctx, |ui| {
         ui.horizontal(|ui| {
             ui.heading("Bevy-GUI");
             ui.separator();
@@ -131,7 +132,7 @@ fn editor_ui_system(
         });
     });
 
-    egui::TopBottomPanel::bottom("console_panel")
+    TopBottomPanel::bottom("console_panel")
         .resizable(true)
         .default_height(150.0)
         .show_animated(ctx, state.show_console, |ui| {
@@ -145,7 +146,7 @@ fn editor_ui_system(
             ui.monospace("[info] scene / hierarchy / inspector / assets panels ready");
         });
 
-    egui::SidePanel::left("hierarchy_panel")
+    SidePanel::left("hierarchy_panel")
         .resizable(true)
         .default_width(240.0)
         .show_animated(ctx, state.show_hierarchy, |ui| {
@@ -160,7 +161,7 @@ fn editor_ui_system(
             }
         });
 
-    egui::SidePanel::right("inspector_panel")
+    SidePanel::right("inspector_panel")
         .resizable(true)
         .default_width(300.0)
         .show_animated(ctx, state.show_inspector, |ui| {
@@ -185,7 +186,7 @@ fn editor_ui_system(
             }
         });
 
-    egui::CentralPanel::default().show(ctx, |ui| {
+    CentralPanel::default().show(ctx, |ui| {
         ui.vertical_centered(|ui| {
             ui.add_space(80.0);
             ui.heading("3D Viewport");
@@ -198,7 +199,7 @@ fn editor_ui_system(
         });
     });
 
-    egui::TopBottomPanel::top("status_toolbar").show(ctx, |ui| {
+    TopBottomPanel::top("status_toolbar").show(ctx, |ui| {
         ui.horizontal(|ui| {
             ui.label(project.name.as_str());
             ui.separator();
