@@ -2,11 +2,13 @@ use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
 
 use crate::{
-    command::{EditorCommand, EditorCommandId, EditorCommandRegistry, EditorCommandBus},
+    assets::install_asset_database,
+    command::{EditorCommand, EditorCommandBus, EditorCommandId, EditorCommandRegistry},
     docking::EditorDockState,
     editor::register_builtin_state,
     plugins::install_builtin_editor_plugins,
     project::ProjectState,
+    scene_model::SceneEditorState,
     ui::install_editor_ui,
     viewport::install_viewport,
 };
@@ -19,9 +21,11 @@ impl Plugin for BevyGuiPlugin {
             .init_resource::<ProjectState>()
             .init_resource::<EditorCommandRegistry>()
             .init_resource::<EditorCommandBus>()
-            .init_resource::<EditorDockState>();
+            .init_resource::<EditorDockState>()
+            .init_resource::<SceneEditorState>();
 
         register_builtin_state(app);
+        install_asset_database(app);
         install_builtin_editor_plugins(app);
         install_viewport(app);
         install_editor_ui(app);
@@ -38,9 +42,11 @@ fn register_default_commands(mut registry: ResMut<EditorCommandRegistry>) {
         ("edit.undo", "Undo", Some("Ctrl+Z")),
         ("edit.redo", "Redo", Some("Ctrl+Y")),
         ("scene.save", "Save Scene", Some("Ctrl+Shift+S")),
+        ("scene.open", "Open Scene", Some("Ctrl+O")),
         ("scene.new_entity", "Create Entity", Some("Ctrl+Shift+A")),
         ("scene.duplicate", "Duplicate Entity", Some("Ctrl+D")),
         ("scene.delete", "Delete Entity", Some("Delete")),
+        ("assets.refresh", "Refresh Assets", Some("F5")),
     ] {
         registry.register(EditorCommand {
             id: EditorCommandId(id),
