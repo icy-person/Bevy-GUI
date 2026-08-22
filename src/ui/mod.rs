@@ -79,15 +79,7 @@ fn editor_ui_system(mut mut_params: EditorUiParams) -> Result {
             .collect()
     };
 
-    let primary = mut_params.selection.primary();
-    let selected_name = primary.and_then(|entity| {
-        mut_params
-            .names
-            .get(entity)
-            .ok()
-            .and_then(|(_, name)| name.map(|value| value.as_str().to_owned()))
-    });
-    let selected_transform = primary.and_then(|entity| {
+    let selected_transform = mut_params.selection.primary().and_then(|entity| {
         mut_params.transforms.get(entity).ok().map(|transform| {
             let (x, y, z) = transform.rotation.to_euler(EulerRot::XYZ);
             TransformEdit {
@@ -118,12 +110,10 @@ fn editor_ui_system(mut mut_params: EditorUiParams) -> Result {
         entities: &entities,
         parents: &parent_map,
         selected_transform,
-        selected_name,
         assets: &asset_paths,
         plugin_names: &plugin_names,
         command_count: mut_params.registry.iter().count(),
         transform_edit: None,
-        name_edit: None,
         viewport_focused: false,
         create_entity: false,
         delete_entity: None,
@@ -131,6 +121,7 @@ fn editor_ui_system(mut mut_params: EditorUiParams) -> Result {
         save_requested: false,
         parent_selected: false,
         unparent_selected: false,
+        name_edit: None,
     };
 
     let mut root_ui = egui::Ui::new(
@@ -146,9 +137,10 @@ fn editor_ui_system(mut mut_params: EditorUiParams) -> Result {
     });
 
     let actions = UiActions::from(&viewer);
+    let save_requested = actions.save_requested;
     let mut parents = mut_params.parent_queries.p1();
     apply_entity_actions(
-        actions,
+        &actions,
         &mut mut_params.commands,
         &mut mut_params.selection,
         &mut mut_params.project,
@@ -158,7 +150,7 @@ fn editor_ui_system(mut mut_params: EditorUiParams) -> Result {
     );
     drop(parents);
 
-    if actions.save_requested {
+    if save_requested {
         let parents = mut_params.parent_queries.p0();
         let scene_entities: Vec<(Entity, String, Transform, Option<Entity>)> = entities
             .iter()
