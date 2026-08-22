@@ -7,7 +7,7 @@ description = "Plugin-first editor platform for the Bevy game engine"
 rust-version = "1.95"
 
 [dependencies]
-bevy = { version = "0.19", default-features = false, features = ["3d", "ui", "bevy_dev_tools", "free_camera"] }
+bevy = { version = "0.19", default-features = false, features = ["2d", "3d", "ui", "bevy_dev_tools", "free_camera"] }
 bevy_egui = "0.41.1"
 egui = "0.35"
 egui_dock = "0.20.1"
