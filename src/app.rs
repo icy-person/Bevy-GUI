@@ -11,8 +11,10 @@ use crate::{
     plugins::install_builtin_editor_plugins,
     project::ProjectState,
     scene_model::SceneEditorState,
+    settings::install_settings,
     ui::install_editor_ui,
     viewport::install_viewport,
+    viewport2d::install_2d_viewport,
 };
 
 pub struct BevyGuiPlugin;
@@ -29,9 +31,11 @@ impl Plugin for BevyGuiPlugin {
             .init_resource::<PanelRegistry>();
 
         register_builtin_state(app);
+        install_settings(app);
         install_asset_database(app);
         install_builtin_editor_plugins(app);
         install_viewport(app);
+        install_2d_viewport(app);
         install_editor_ui(app);
         app.add_systems(Startup, register_default_commands)
             .add_systems(Update, execute_editor_commands);
