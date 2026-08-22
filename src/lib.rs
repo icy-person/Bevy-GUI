@@ -1,13 +1,13 @@
 //! Bevy-GUI: a plugin-first editor shell for Bevy.
 //!
-//! The editor is intentionally split into small plugins and registries so new
-//! panels, commands, project services and tools can be added without changing
-//! the editor kernel.
+//! The editor is split into small plugins and registries so new panels, tools,
+//! commands and services can be added without changing the editor kernel.
 
 pub mod app;
 pub mod command;
 pub mod editor;
 pub mod panel;
+pub mod plugins;
 pub mod project;
 pub mod selection;
 
