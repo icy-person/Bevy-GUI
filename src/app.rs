@@ -1,6 +1,5 @@
 use bevy::prelude::*;
-use bevy_egui::{egui, EguiContexts, EguiPlugin};
-use egui::containers::panel::{CentralPanel, SidePanel, TopBottomPanel};
+use bevy_egui::{egui, EguiContexts, EguiPlugin, EguiPrimaryContextPass};
 
 use crate::{
     command::{EditorCommand, EditorCommandId, EditorCommandRegistry},
@@ -22,7 +21,7 @@ impl Plugin for BevyGuiPlugin {
 
         register_builtin_state(app);
         app.add_systems(Startup, (register_default_commands, setup_editor_scene))
-            .add_systems(Update, editor_ui_system);
+            .add_systems(EguiPrimaryContextPass, editor_ui_system);
     }
 }
 
@@ -95,17 +94,25 @@ fn editor_ui_system(
     mut state: ResMut<EditorUiState>,
     mut project: ResMut<ProjectState>,
     mut selection: ResMut<SelectionState>,
-    mut initial: Option<ResMut<InitialSelected>>,
+    initial: Option<Res<InitialSelected>>,
     names: Query<(Entity, Option<&Name>), Without<Window>>,
     transforms: Query<&Transform>,
-) {
-    let Ok(ctx) = contexts.ctx_mut() else { return };
+) -> Result {
+    let ctx = contexts.ctx_mut()?;
 
-    if let Some(initial) = initial.take() {
+    if let Some(initial) = initial {
         selection.select(initial.0);
     }
 
-    TopBottomPanel::top("menu_bar").show(ctx, |ui| {
+    let mut viewport_ui = egui::Ui::new(
+        ctx.clone(),
+        "editor_viewport".into(),
+        egui::UiBuilder::new()
+            .layer_id(egui::LayerId::background())
+            .max_rect(ctx.viewport_rect()),
+    );
+
+    egui::Panel::top("menu_bar").show(&mut viewport_ui, |ui| {
         ui.horizontal(|ui| {
             ui.heading("Bevy-GUI");
             ui.separator();
@@ -132,74 +139,7 @@ fn editor_ui_system(
         });
     });
 
-    TopBottomPanel::bottom("console_panel")
-        .resizable(true)
-        .default_height(150.0)
-        .show_animated(ctx, state.show_console, |ui| {
-            ui.horizontal(|ui| {
-                ui.strong("Console");
-                ui.separator();
-                ui.label("Editor initialized successfully.");
-            });
-            ui.separator();
-            ui.monospace("[info] plugin-first editor kernel online");
-            ui.monospace("[info] scene / hierarchy / inspector / assets panels ready");
-        });
-
-    SidePanel::left("hierarchy_panel")
-        .resizable(true)
-        .default_width(240.0)
-        .show_animated(ctx, state.show_hierarchy, |ui| {
-            ui.heading("Scene");
-            ui.separator();
-            for (entity, name) in &names {
-                let label = name.map(|n| n.as_str()).unwrap_or("Entity");
-                let selected = selection.entity == Some(entity);
-                if ui.selectable_label(selected, label).clicked() {
-                    selection.select(entity);
-                }
-            }
-        });
-
-    SidePanel::right("inspector_panel")
-        .resizable(true)
-        .default_width(300.0)
-        .show_animated(ctx, state.show_inspector, |ui| {
-            ui.heading("Inspector");
-            ui.separator();
-            if let Some(entity) = selection.entity {
-                ui.label(format!("Entity {:?}", entity));
-                ui.separator();
-                if let Ok(transform) = transforms.get(entity) {
-                    ui.collapsing("Transform", |ui| {
-                        ui.label(format!("Position: {:.2}, {:.2}, {:.2}", transform.translation.x, transform.translation.y, transform.translation.z));
-                        ui.label(format!("Scale: {:.2}, {:.2}, {:.2}", transform.scale.x, transform.scale.y, transform.scale.z));
-                        let (x, y, z) = transform.rotation.to_euler(EulerRot::XYZ);
-                        ui.label(format!("Rotation: {:.1}°, {:.1}°, {:.1}°", x.to_degrees(), y.to_degrees(), z.to_degrees()));
-                    });
-                }
-                ui.collapsing("Components", |ui| {
-                    ui.label("Reflection-based component inspectors are an extension point.");
-                });
-            } else {
-                ui.weak("Nothing selected");
-            }
-        });
-
-    CentralPanel::default().show(ctx, |ui| {
-        ui.vertical_centered(|ui| {
-            ui.add_space(80.0);
-            ui.heading("3D Viewport");
-            ui.label("The rendering surface is intentionally isolated from editor panels.");
-            ui.add_space(18.0);
-            ui.group(|ui| {
-                ui.label("Viewport service ready");
-                ui.small("Next layer: camera gizmos, picking, grid, transform tools and scene serialization.");
-            });
-        });
-    });
-
-    TopBottomPanel::top("status_toolbar").show(ctx, |ui| {
+    egui::Panel::top("status_toolbar").show(&mut viewport_ui, |ui| {
         ui.horizontal(|ui| {
             ui.label(project.name.as_str());
             ui.separator();
@@ -216,4 +156,88 @@ fn editor_ui_system(
             ui.label(state.status.as_str());
         });
     });
+
+    egui::Panel::bottom("console_panel")
+        .resizable(true)
+        .default_size(150.0)
+        .show_collapsible(&mut viewport_ui, &mut state.show_console, |ui| {
+            ui.horizontal(|ui| {
+                ui.strong("Console");
+                ui.separator();
+                ui.label("Editor initialized successfully.");
+            });
+            ui.separator();
+            ui.monospace("[info] plugin-first editor kernel online");
+            ui.monospace("[info] scene / hierarchy / inspector / assets panels ready");
+        });
+
+    egui::Panel::left("hierarchy_panel")
+        .resizable(true)
+        .default_size(240.0)
+        .show_collapsible(&mut viewport_ui, &mut state.show_hierarchy, |ui| {
+            ui.heading("Scene");
+            ui.separator();
+            for (entity, name) in &names {
+                let label = name.map(|n| n.as_str()).unwrap_or("Entity");
+                let selected = selection.entity == Some(entity);
+                if ui.selectable_label(selected, label).clicked() {
+                    selection.select(entity);
+                }
+            }
+        });
+
+    egui::Panel::right("inspector_panel")
+        .resizable(true)
+        .default_size(300.0)
+        .show_collapsible(&mut viewport_ui, &mut state.show_inspector, |ui| {
+            ui.heading("Inspector");
+            ui.separator();
+            if let Some(entity) = selection.entity {
+                ui.label(format!("Entity {:?}", entity));
+                ui.separator();
+                if let Ok(transform) = transforms.get(entity) {
+                    ui.collapsing("Transform", |ui| {
+                        ui.label(format!(
+                            "Position: {:.2}, {:.2}, {:.2}",
+                            transform.translation.x,
+                            transform.translation.y,
+                            transform.translation.z
+                        ));
+                        ui.label(format!(
+                            "Scale: {:.2}, {:.2}, {:.2}",
+                            transform.scale.x, transform.scale.y, transform.scale.z
+                        ));
+                        let (x, y, z) = transform.rotation.to_euler(EulerRot::XYZ);
+                        ui.label(format!(
+                            "Rotation: {:.1}°, {:.1}°, {:.1}°",
+                            x.to_degrees(),
+                            y.to_degrees(),
+                            z.to_degrees()
+                        ));
+                    });
+                }
+                ui.collapsing("Components", |ui| {
+                    ui.label("Reflection-based component inspectors are an extension point.");
+                });
+            } else {
+                ui.weak("Nothing selected");
+            }
+        });
+
+    egui::CentralPanel::default().show(&mut viewport_ui, |ui| {
+        ui.vertical_centered(|ui| {
+            ui.add_space(80.0);
+            ui.heading("3D Viewport");
+            ui.label("The rendering surface is intentionally isolated from editor panels.");
+            ui.add_space(18.0);
+            ui.group(|ui| {
+                ui.label("Viewport service ready");
+                ui.small(
+                    "Next layer: camera gizmos, picking, grid, transform tools and scene serialization.",
+                );
+            });
+        });
+    });
+
+    Ok(())
 }
