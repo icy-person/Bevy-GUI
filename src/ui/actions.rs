@@ -1,14 +1,12 @@
 use bevy::prelude::*;
 
 use crate::{
-    command::EditorCommandBus,
+    docking::{DockViewer, TransformEdit},
     history::{TransformHistory, TransformSnapshot},
     project::ProjectState,
     selection::SelectionState,
-    scene::SceneDocument,
+    viewport::EditorEntity,
 };
-use crate::docking::{DockViewer, TransformEdit};
-use crate::viewport::EditorEntity;
 
 #[derive(Clone, Copy)]
 pub struct UiActions {
