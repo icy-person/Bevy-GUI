@@ -68,42 +68,73 @@ impl TabViewer for DockViewer<'_> {
 }
 
 impl DockViewer<'_> {
-    fn show_viewport(&mut self, ui: &mut egui::Ui) {
-        self.viewport_focused = true;
+    fn heading(ui: &mut egui::Ui, title: &str, subtitle: &str) {
         ui.horizontal(|ui| {
-            ui.strong("Scene");
-            ui.separator();
-            for (mode, label) in [
-                (EditorMode::Edit, "Edit"),
-                (EditorMode::Play, "Play"),
-                (EditorMode::Paused, "Pause"),
-            ] {
-                if ui
-                    .selectable_label(self.project.mode == mode, label)
-                    .clicked()
-                {
-                    self.project.mode = mode;
-                }
-            }
-            ui.separator();
-            ui.label("W Translate   E Rotate   R Scale   X World/Local   Ctrl+Z/Y");
-            ui.separator();
-            ui.label(format!("{} selected", self.selection.entities.len()));
-        });
-        ui.separator();
-        ui.centered_and_justified(|ui| {
-            ui.vertical_centered(|ui| {
-                ui.heading("3D Viewport");
-                ui.label("Live Bevy world, FreeCamera and InfiniteGrid are active.");
-                ui.label("Click geometry to select; use the gizmo to author transforms.");
-            });
+            ui.label(egui::RichText::new(title).size(17.0).strong());
+            ui.add_space(6.0);
+            ui.label(egui::RichText::new(subtitle).weak());
         });
     }
 
+    fn section(ui: &mut egui::Ui, title: &str, add_contents: impl FnOnce(&mut egui::Ui)) {
+        egui::Frame::group(ui.style())
+            .fill(egui::Color32::from_rgb(29, 29, 36))
+            .stroke(egui::Stroke::new(1.0, egui::Color32::from_rgb(49, 49, 58)))
+            .inner_margin(egui::Margin::same(10))
+            .show(ui, |ui| {
+                ui.label(egui::RichText::new(title).strong());
+                ui.add_space(5.0);
+                add_contents(ui);
+            });
+    }
+
+    fn show_viewport(&mut self, ui: &mut egui::Ui) {
+        self.viewport_focused = true;
+        egui::Frame::none()
+            .fill(egui::Color32::from_rgb(13, 13, 17))
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(egui::RichText::new("Scene View").strong());
+                    ui.separator();
+                    for (mode, label) in [
+                        (EditorMode::Edit, "Edit"),
+                        (EditorMode::Play, "Play"),
+                        (EditorMode::Paused, "Pause"),
+                    ] {
+                        if ui
+                            .selectable_label(self.project.mode == mode, label)
+                            .clicked()
+                        {
+                            self.project.mode = mode;
+                        }
+                    }
+                    ui.separator();
+                    ui.weak("W Move   E Rotate   R Scale   X World/Local");
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        ui.label(format!("{} selected", self.selection.entities.len()));
+                    });
+                });
+                ui.separator();
+                ui.centered_and_justified(|ui| {
+                    egui::Frame::group(ui.style())
+                        .fill(egui::Color32::from_rgb(24, 24, 30))
+                        .inner_margin(egui::Margin::same(20))
+                        .show(ui, |ui| {
+                            ui.vertical_centered(|ui| {
+                                ui.heading("3D Viewport");
+                                ui.label("Live Bevy world • FreeCamera • InfiniteGrid • Picking • Gizmo");
+                                ui.add_space(8.0);
+                                ui.small("Select entities directly in the scene and author transforms with the gizmo.");
+                            });
+                        });
+                });
+            });
+    }
+
     fn show_hierarchy(&mut self, ui: &mut egui::Ui) {
+        Self::heading(ui, "Scene Hierarchy", "Entities and parent relationships");
         ui.horizontal(|ui| {
-            ui.heading("Scene Hierarchy");
-            if ui.small_button("+").clicked() {
+            if ui.button("＋ Entity").clicked() {
                 self.create_entity = true;
             }
             if self.selection.entities.len() >= 2 {
@@ -124,20 +155,21 @@ impl DockViewer<'_> {
             }
         });
         ui.separator();
-        for (entity, name) in self.entities {
-            let selected = self.selection.contains(*entity);
-            let depth = self.depth(*entity, 0);
-            let label = format!("{}{}", "  ".repeat(depth), name);
-            let response = ui.selectable_label(selected, label);
-            if response.clicked() {
-                let ctrl = ui.input(|input| input.modifiers.ctrl);
-                if ctrl {
-                    self.selection.toggle(*entity);
-                } else {
-                    self.selection.select(*entity);
+        Self::section(ui, "Entities", |ui| {
+            for (entity, name) in self.entities {
+                let selected = self.selection.contains(*entity);
+                let depth = self.depth(*entity, 0);
+                let response = ui.selectable_label(selected, format!("{}{}", "  ".repeat(depth), name));
+                if response.clicked() {
+                    let ctrl = ui.input(|input| input.modifiers.ctrl);
+                    if ctrl {
+                        self.selection.toggle(*entity);
+                    } else {
+                        self.selection.select(*entity);
+                    }
                 }
             }
-        }
+        });
     }
 
     fn depth(&self, entity: Entity, mut depth: usize) -> usize {
@@ -158,55 +190,57 @@ impl DockViewer<'_> {
     }
 
     fn show_inspector(&mut self, ui: &mut egui::Ui) {
-        ui.heading("Inspector");
+        Self::heading(ui, "Inspector", "Selected entity properties");
         ui.separator();
         if let Some(mut edit) = self.selected_transform {
-            ui.label(format!("Primary Entity {:?}", edit.entity));
-            if let Some(mut name) = self.selected_name.clone() {
-                ui.horizontal(|ui| {
-                    ui.label("Name");
-                    ui.text_edit_singleline(&mut name);
-                    if ui.button("Apply").clicked() {
-                        self.name_edit = Some(name.clone());
-                    }
-                });
-            }
-            ui.separator();
-            ui.collapsing("Transform", |ui| {
+            Self::section(ui, "Identity", |ui| {
+                ui.label(format!("Entity {:?}", edit.entity));
+                if let Some(mut name) = self.selected_name.clone() {
+                    ui.horizontal(|ui| {
+                        ui.label("Name");
+                        ui.text_edit_singleline(&mut name);
+                        if ui.small_button("Apply").clicked() {
+                            self.name_edit = Some(name.clone());
+                        }
+                    });
+                }
+            });
+            ui.add_space(8.0);
+            Self::section(ui, "Transform", |ui| {
                 for (label, value) in [
-                    ("Translation", &mut edit.translation),
+                    ("Position", &mut edit.translation),
                     ("Rotation", &mut edit.rotation),
                     ("Scale", &mut edit.scale),
                 ] {
-                    ui.label(label);
+                    ui.label(egui::RichText::new(label).strong());
                     ui.horizontal(|ui| {
                         ui.add(egui::DragValue::new(&mut value.x).speed(0.05));
                         ui.add(egui::DragValue::new(&mut value.y).speed(0.05));
                         ui.add(egui::DragValue::new(&mut value.z).speed(0.05));
                     });
                 }
+                if ui.button("Apply Transform").clicked() {
+                    self.transform_edit = Some(edit);
+                }
             });
-            if ui.button("Apply Transform").clicked() {
-                self.transform_edit = Some(edit);
-            } else {
-                self.selected_transform = Some(edit);
-            }
-            ui.separator();
-            ui.collapsing("Components", |ui| {
+            ui.add_space(8.0);
+            Self::section(ui, "Components", |ui| {
                 ui.label("Transform");
                 ui.label("Name");
-                ui.label("Mesh3d / Material references are editor-owned components.");
+                ui.label("Mesh3d");
+                ui.label("MeshMaterial3d");
             });
         } else {
-            ui.weak("Nothing selected");
+            ui.centered_and_justified(|ui| ui.weak("Select an entity to inspect it"));
         }
     }
 
     fn show_assets(&mut self, ui: &mut egui::Ui) {
-        ui.heading("Asset Browser");
+        Self::heading(ui, "Asset Browser", "Project files and imported resources");
         ui.separator();
-        ui.label(format!("{} discovered files", self.assets.len()));
-        egui::ScrollArea::vertical().show(ui, |ui| {
+        Self::section(ui, "Library", |ui| {
+            ui.label(format!("{} discovered files", self.assets.len()));
+            ui.add_space(5.0);
             for path in self.assets.iter().take(1000) {
                 let _ = ui.selectable_label(false, path);
             }
@@ -214,28 +248,35 @@ impl DockViewer<'_> {
     }
 
     fn show_console(&mut self, ui: &mut egui::Ui) {
-        ui.horizontal(|ui| {
-            ui.heading("Console");
-            if ui.small_button("Save Scene").clicked() {
-                self.save_requested = true;
-            }
-        });
+        Self::heading(ui, "Console", "Editor and runtime messages");
         ui.separator();
-        ui.monospace("[info] plugin-first editor kernel online");
-        ui.monospace(format!("[info] {} commands registered", self.command_count));
-        ui.monospace(format!("[info] {} plugins installed", self.plugin_names.len()));
-        ui.monospace(format!("[info] {} selected", self.selection.entities.len()));
-        if self.project.dirty {
-            ui.monospace("[warn] current scene has unsaved changes");
+        egui::Frame::group(ui.style()).show(ui, |ui| {
+            ui.monospace("[info] plugin-first editor kernel online");
+            ui.monospace(format!("[info] {} commands registered", self.command_count));
+            ui.monospace(format!("[info] {} plugins installed", self.plugin_names.len()));
+            ui.monospace(format!("[info] {} selected", self.selection.entities.len()));
+            if self.project.dirty {
+                ui.monospace("[warn] current scene has unsaved changes");
+            }
+            ui.monospace(format!("[info] status: {}", self.ui_state.status));
+        });
+        ui.add_space(8.0);
+        if ui.button("Save Scene").clicked() {
+            self.save_requested = true;
         }
-        ui.monospace(format!("[info] status: {}", self.ui_state.status));
     }
 
     fn show_plugins(&mut self, ui: &mut egui::Ui) {
-        ui.heading("Plugins");
+        Self::heading(ui, "Plugins", "Editor extensions and services");
         ui.separator();
         for plugin in self.plugin_names {
-            ui.label(plugin);
+            egui::Frame::group(ui.style()).show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label("✦");
+                    ui.label(plugin);
+                });
+            });
+            ui.add_space(5.0);
         }
     }
 }
