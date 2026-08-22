@@ -12,8 +12,9 @@ pub struct ProjectState {
     pub main_scene: Option<PathBuf>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum EditorMode {
+    #[default]
     Edit,
     Play,
     Paused,
