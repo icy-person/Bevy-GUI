@@ -71,6 +71,7 @@ pub struct DockViewer<'a> {
     pub viewport_focused: bool,
     pub create_entity: bool,
     pub delete_entity: Option<Entity>,
+    pub save_requested: bool,
 }
 
 impl TabViewer for DockViewer<'_> {
@@ -192,7 +193,12 @@ impl TabViewer for DockViewer<'_> {
                 });
             }
             EditorTab::Console => {
-                ui.heading("Console");
+                ui.horizontal(|ui| {
+                    ui.heading("Console");
+                    if ui.small_button("Save Scene").clicked() {
+                        self.save_requested = true;
+                    }
+                });
                 ui.separator();
                 ui.monospace("[info] plugin-first editor kernel online");
                 ui.monospace(format!("[info] {} commands registered", self.command_count));
