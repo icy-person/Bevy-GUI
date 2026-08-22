@@ -1,7 +1,10 @@
 use bevy::prelude::*;
 use bevy_egui::egui;
 
-use crate::{EditorPlugin, EditorPluginRegistry, PanelRegistry};
+use crate::{
+    editor::{EditorPlugin, EditorPluginRegistry},
+    panel::PanelRegistry,
+};
 
 pub struct ConsolePlugin;
 
