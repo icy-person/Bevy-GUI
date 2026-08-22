@@ -7,6 +7,7 @@ use crate::{
     command_executor::{execute_editor_commands, CommandExecutionState},
     docking::EditorDockState,
     editor::register_builtin_state,
+    panel::PanelRegistry,
     plugins::install_builtin_editor_plugins,
     project::ProjectState,
     scene_model::SceneEditorState,
@@ -24,7 +25,8 @@ impl Plugin for BevyGuiPlugin {
             .init_resource::<EditorCommandBus>()
             .init_resource::<CommandExecutionState>()
             .init_resource::<EditorDockState>()
-            .init_resource::<SceneEditorState>();
+            .init_resource::<SceneEditorState>()
+            .init_resource::<PanelRegistry>();
 
         register_builtin_state(app);
         install_asset_database(app);
