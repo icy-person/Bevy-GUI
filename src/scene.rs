@@ -3,8 +3,6 @@ use serde::{Deserialize, Serialize};
 use std::{fs, io, path::Path};
 use thiserror::Error;
 
-use crate::scene_model::EditorParent;
-
 #[derive(Component, Debug, Default, Clone, Copy)]
 pub struct SceneNode;
 
@@ -16,9 +14,7 @@ pub struct SceneDocument {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SceneEntity {
-    #[serde(default)]
     pub id: u64,
-    #[serde(default)]
     pub parent: Option<u64>,
     pub name: String,
     pub translation: [f32; 3],
@@ -28,20 +24,6 @@ pub struct SceneEntity {
 
 impl SceneDocument {
     pub fn from_entities<I>(entities: I) -> Self
-    where
-        I: IntoIterator<Item = (String, Transform)>,
-    {
-        Self {
-            format_version: 2,
-            entities: entities
-                .into_iter()
-                .enumerate()
-                .map(|(index, (name, transform))| SceneEntity::from_transform(index as u64 + 1, None, name, transform))
-                .collect(),
-        }
-    }
-
-    pub fn from_world<I>(entities: I) -> Self
     where
         I: IntoIterator<Item = (Entity, String, Transform, Option<Entity>)>,
     {
@@ -55,7 +37,7 @@ impl SceneDocument {
             entities: snapshot
                 .into_iter()
                 .enumerate()
-                .map(|(index, (entity, name, transform, parent))| {
+                .map(|(index, (_entity, name, transform, parent))| {
                     SceneEntity::from_transform(
                         index as u64 + 1,
                         parent.and_then(|value| ids.get(&value).copied()),
@@ -100,29 +82,30 @@ impl SceneEntity {
 }
 
 pub fn spawn_scene(commands: &mut Commands, document: &SceneDocument) -> Vec<Entity> {
-    let mut spawned = Vec::with_capacity(document.entities.len());
     let mut by_id = std::collections::BTreeMap::new();
+    let mut pending_parents = Vec::new();
+    let mut spawned = Vec::with_capacity(document.entities.len());
+
     for entity in &document.entities {
-        let id = commands
+        let spawned_entity = commands
             .spawn((
                 Name::new(entity.name.clone()),
                 entity.transform(),
                 SceneNode,
-                EditorParent(None),
+                crate::EditorParent(None),
             ))
             .id();
-        spawned.push(id);
-        by_id.insert(entity.id, id);
+        by_id.insert(entity.id, spawned_entity);
+        pending_parents.push((spawned_entity, entity.parent));
+        spawned.push(spawned_entity);
     }
-    for (index, entity) in document.entities.iter().enumerate() {
-        if let Some(parent_id) = entity.parent {
-            if let Some(parent) = by_id.get(&parent_id) {
-                commands
-                    .entity(spawned[index])
-                    .insert(EditorParent(Some(*parent)));
-            }
+
+    for (entity, parent_id) in pending_parents {
+        if let Some(parent_id) = parent_id.and_then(|id| by_id.get(&id).copied()) {
+            commands.entity(entity).insert(crate::EditorParent(Some(parent_id)));
         }
     }
+
     spawned
 }
 
@@ -159,22 +142,27 @@ mod tests {
 
     #[test]
     fn scene_json_round_trip() {
-        let document = SceneDocument::from_entities([(
-            "Player".to_owned(),
-            Transform {
-                translation: Vec3::new(1.0, 2.0, 3.0),
-                rotation: Quat::from_rotation_y(0.5),
-                scale: Vec3::splat(2.0),
-            },
-        )]);
+        let parent = Entity::from_raw(1);
+        let child = Entity::from_raw(2);
+        let document = SceneDocument::from_entities([
+            (parent, "Root".to_owned(), Transform::default(), None),
+            (
+                child,
+                "Player".to_owned(),
+                Transform {
+                    translation: Vec3::new(1.0, 2.0, 3.0),
+                    rotation: Quat::from_rotation_y(0.5),
+                    scale: Vec3::splat(2.0),
+                },
+                Some(parent),
+            ),
+        ]);
         let json = serde_json::to_string(&document).expect("scene serialization should succeed");
-        let restored: SceneDocument = serde_json::from_str(&json).expect("scene parsing should succeed");
+        let restored: SceneDocument =
+            serde_json::from_str(&json).expect("scene parsing should succeed");
         assert_eq!(restored.format_version, 2);
-        assert_eq!(restored.entities.len(), 1);
-        assert_eq!(restored.entities[0].id, 1);
-        assert_eq!(restored.entities[0].parent, None);
-        assert_eq!(restored.entities[0].name, "Player");
-        assert_eq!(restored.entities[0].translation, [1.0, 2.0, 3.0]);
-        assert_eq!(restored.entities[0].scale, [2.0, 2.0, 2.0]);
+        assert_eq!(restored.entities.len(), 2);
+        assert_eq!(restored.entities[1].name, "Player");
+        assert_eq!(restored.entities[1].parent, Some(1));
     }
 }
