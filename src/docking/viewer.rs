@@ -89,7 +89,7 @@ impl DockViewer<'_> {
 
     fn show_viewport(&mut self, ui: &mut egui::Ui) {
         self.viewport_focused = true;
-        egui::Frame::none()
+        egui::Frame::new()
             .fill(egui::Color32::from_rgb(13, 13, 17))
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
