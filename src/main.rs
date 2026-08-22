@@ -22,6 +22,6 @@ fn main() {
             ..default()
         }))
         .add_plugins(BevyGuiPlugin)
-        .add_systems(Startup, load_project_on_startup.after(bevy_gui::app::setup_editor_scene))
+        .add_systems(Startup, load_project_on_startup)
         .run();
 }
