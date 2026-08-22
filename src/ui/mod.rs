@@ -37,7 +37,8 @@ pub struct EditorUiParams<'w, 's> {
     pub history: ResMut<'w, TransformHistory>,
     pub transforms: Query<'w, 's, &'static Transform, With<EditorEntity>>,
     pub names: Query<'w, 's, (Entity, Option<&'static Name>), With<EditorEntity>>,
-    pub parents: Query<'w, 's, Option<&'static EditorParent>, With<EditorEntity>>,
+    pub parents_read: Query<'w, 's, Option<&'static EditorParent>, With<EditorEntity>>,
+    pub parents: Query<'w, 's, &'static mut EditorParent, With<EditorEntity>>,
     pub commands: Commands<'w, 's>,
 }
 
@@ -55,6 +56,20 @@ fn editor_ui_system(mut params: EditorUiParams) -> Result {
                 entity,
                 name.map(|value| value.as_str().to_owned())
                     .unwrap_or_else(|| format!("Entity {entity:?}")),
+            )
+        })
+        .collect();
+    let parent_map: Vec<(Entity, Option<Entity>)> = entities
+        .iter()
+        .map(|(entity, _)| {
+            (
+                *entity,
+                params
+                    .parents_read
+                    .get(*entity)
+                    .ok()
+                    .flatten()
+                    .and_then(|parent| parent.0),
             )
         })
         .collect();
@@ -88,6 +103,7 @@ fn editor_ui_system(mut params: EditorUiParams) -> Result {
         selection: &mut params.selection,
         ui_state: &mut params.state,
         entities: &entities,
+        parents: &parent_map,
         selected_transform,
         assets: &asset_paths,
         plugin_names: &plugin_names,
@@ -98,6 +114,8 @@ fn editor_ui_system(mut params: EditorUiParams) -> Result {
         delete_entity: None,
         duplicate_entity: None,
         save_requested: false,
+        parent_selected: false,
+        unparent_selected: false,
     };
 
     let mut root_ui = egui::Ui::new(
@@ -120,6 +138,7 @@ fn editor_ui_system(mut params: EditorUiParams) -> Result {
         &mut params.project,
         &mut params.history,
         &params.transforms,
+        &mut params.parents,
     );
 
     if actions.save_requested {
@@ -127,7 +146,12 @@ fn editor_ui_system(mut params: EditorUiParams) -> Result {
             .iter()
             .filter_map(|(entity, name)| {
                 let transform = params.transforms.get(*entity).ok().copied()?;
-                let parent = params.parents.get(*entity).ok().flatten().and_then(|p| p.0);
+                let parent = params
+                    .parents_read
+                    .get(*entity)
+                    .ok()
+                    .flatten()
+                    .and_then(|parent| parent.0);
                 Some((*entity, name.clone(), transform, parent))
             })
             .collect();
