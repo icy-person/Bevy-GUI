@@ -22,5 +22,5 @@ pub use history::{TransformHistory, TransformSnapshot};
 pub use panel::PanelRegistry;
 pub use project::{load_project, save_project, ProjectIoError, ProjectManifest, ProjectState};
 pub use runtime::PlaySession;
-pub use scene::{load_scene, save_scene, SceneDocument, SceneEntity, SceneIoError};
+pub use scene::{load_scene, save_scene, spawn_scene, SceneDocument, SceneEntity, SceneIoError, SceneNode};
 pub use selection::SelectionState;
