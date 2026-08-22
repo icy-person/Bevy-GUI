@@ -69,6 +69,8 @@ pub struct DockViewer<'a> {
     pub command_count: usize,
     pub transform_edit: Option<TransformEdit>,
     pub viewport_focused: bool,
+    pub create_entity: bool,
+    pub delete_entity: Option<Entity>,
 }
 
 impl TabViewer for DockViewer<'_> {
@@ -117,7 +119,21 @@ impl TabViewer for DockViewer<'_> {
                 });
             }
             EditorTab::Hierarchy => {
-                ui.heading("Scene Hierarchy");
+                ui.horizontal(|ui| {
+                    ui.heading("Scene Hierarchy");
+                    if ui.small_button("+").on_hover_text("Create empty entity").clicked() {
+                        self.create_entity = true;
+                    }
+                    if let Some(entity) = self.selection.entity {
+                        if ui
+                            .small_button("Delete")
+                            .on_hover_text("Delete selected entity")
+                            .clicked()
+                        {
+                            self.delete_entity = Some(entity);
+                        }
+                    }
+                });
                 ui.separator();
                 for (entity, name) in self.entities {
                     let selected = self.selection.entity == Some(*entity);
