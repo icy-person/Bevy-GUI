@@ -1,7 +1,7 @@
 //! Editor workspace UI. Rendering, authoring actions, asset discovery and persistence
 //! are isolated into focused submodules.
 
-use bevy::ecs::system::SystemParam;
+use bevy::ecs::system::{ParamSet, SystemParam};
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
 
@@ -37,8 +37,10 @@ pub struct EditorUiParams<'w, 's> {
     pub history: ResMut<'w, TransformHistory>,
     pub transforms: Query<'w, 's, &'static Transform, With<EditorEntity>>,
     pub names: Query<'w, 's, (Entity, Option<&'static Name>), With<EditorEntity>>,
-    pub parents_read: Query<'w, 's, Option<&'static EditorParent>, With<EditorEntity>>,
-    pub parents: Query<'w, 's, &'static mut EditorParent, With<EditorEntity>>,
+    pub parent_queries: ParamSet<'w, 's, (
+        Query<'w, 's, Option<&'static EditorParent>, With<EditorEntity>>,
+        Query<'w, 's, &'static mut EditorParent, With<EditorEntity>>,
+    )>,
     pub commands: Commands<'w, 's>,
 }
 
@@ -46,9 +48,9 @@ pub fn install_editor_ui(app: &mut App) {
     app.add_systems(bevy_egui::EguiPrimaryContextPass, editor_ui_system);
 }
 
-fn editor_ui_system(mut params: EditorUiParams) -> Result {
-    let ctx = params.contexts.ctx_mut()?;
-    let entities: Vec<(Entity, String)> = params
+fn editor_ui_system(mut mut_params: EditorUiParams) -> Result {
+    let ctx = mut_params.contexts.ctx_mut()?;
+    let entities: Vec<(Entity, String)> = mut_params
         .names
         .iter()
         .map(|(entity, name)| {
@@ -59,23 +61,26 @@ fn editor_ui_system(mut params: EditorUiParams) -> Result {
             )
         })
         .collect();
-    let parent_map: Vec<(Entity, Option<Entity>)> = entities
-        .iter()
-        .map(|(entity, _)| {
-            (
-                *entity,
-                params
-                    .parents_read
-                    .get(*entity)
-                    .ok()
-                    .flatten()
-                    .and_then(|parent| parent.0),
-            )
-        })
-        .collect();
 
-    let selected_transform = params.selection.primary().and_then(|entity| {
-        params.transforms.get(entity).ok().map(|transform| {
+    let parent_map: Vec<(Entity, Option<Entity>)> = {
+        let parents = mut_params.parent_queries.p0();
+        entities
+            .iter()
+            .map(|(entity, _)| {
+                (
+                    *entity,
+                    parents
+                        .get(*entity)
+                        .ok()
+                        .flatten()
+                        .and_then(|parent| parent.0),
+                )
+            })
+            .collect()
+    };
+
+    let selected_transform = mut_params.selection.primary().and_then(|entity| {
+        mut_params.transforms.get(entity).ok().map(|transform| {
             let (x, y, z) = transform.rotation.to_euler(EulerRot::XYZ);
             TransformEdit {
                 entity,
@@ -86,28 +91,28 @@ fn editor_ui_system(mut params: EditorUiParams) -> Result {
         })
     });
 
-    let asset_paths: Vec<String> = params
+    let asset_paths: Vec<String> = mut_params
         .assets
         .entries
         .iter()
         .map(|entry| entry.path.display().to_string())
         .collect();
-    let plugin_names: Vec<String> = params
+    let plugin_names: Vec<String> = mut_params
         .plugins
         .iter()
         .map(|(name, version)| format!("{name} v{version}"))
         .collect();
 
     let mut viewer = DockViewer {
-        project: &mut params.project,
-        selection: &mut params.selection,
-        ui_state: &mut params.state,
+        project: &mut mut_params.project,
+        selection: &mut mut_params.selection,
+        ui_state: &mut mut_params.state,
         entities: &entities,
         parents: &parent_map,
         selected_transform,
         assets: &asset_paths,
         plugin_names: &plugin_names,
-        command_count: params.registry.iter().count(),
+        command_count: mut_params.registry.iter().count(),
         transform_edit: None,
         viewport_focused: false,
         create_entity: false,
@@ -127,27 +132,27 @@ fn editor_ui_system(mut params: EditorUiParams) -> Result {
     );
 
     egui::CentralPanel::default().show(&mut root_ui, |ui| {
-        show_dock_area(ui, &mut params.dock, &mut viewer);
+        show_dock_area(ui, &mut mut_params.dock, &mut viewer);
     });
 
     let actions = UiActions::from(&viewer);
     apply_entity_actions(
         actions,
-        &mut params.commands,
-        &mut params.selection,
-        &mut params.project,
-        &mut params.history,
-        &params.transforms,
-        &mut params.parents,
+        &mut mut_params.commands,
+        &mut mut_params.selection,
+        &mut mut_params.project,
+        &mut mut_params.history,
+        &mut_params.transforms,
+        &mut mut_params.parent_queries.p1(),
     );
 
     if actions.save_requested {
+        let parents = mut_params.parent_queries.p0();
         let scene_entities: Vec<(Entity, String, Transform, Option<Entity>)> = entities
             .iter()
             .filter_map(|(entity, name)| {
-                let transform = params.transforms.get(*entity).ok().copied()?;
-                let parent = params
-                    .parents_read
+                let transform = mut_params.transforms.get(*entity).ok().copied()?;
+                let parent = parents
                     .get(*entity)
                     .ok()
                     .flatten()
@@ -155,7 +160,7 @@ fn editor_ui_system(mut params: EditorUiParams) -> Result {
                 Some((*entity, name.clone(), transform, parent))
             })
             .collect();
-        save_editor_project(&mut params.project, &mut params.state, &scene_entities);
+        save_editor_project(&mut mut_params.project, &mut mut_params.state, &scene_entities);
     }
 
     Ok(())
