@@ -15,6 +15,7 @@ pub struct DockViewer<'a> {
     pub selection: &'a mut SelectionState,
     pub ui_state: &'a mut EditorUiState,
     pub entities: &'a [(Entity, String)],
+    pub parents: &'a [(Entity, Option<Entity>)],
     pub selected_transform: Option<TransformEdit>,
     pub assets: &'a [String],
     pub plugin_names: &'a [String],
@@ -25,6 +26,8 @@ pub struct DockViewer<'a> {
     pub delete_entity: Option<Entity>,
     pub duplicate_entity: Option<Entity>,
     pub save_requested: bool,
+    pub parent_selected: bool,
+    pub unparent_selected: bool,
 }
 
 impl TabViewer for DockViewer<'_> {
@@ -101,6 +104,14 @@ impl DockViewer<'_> {
             if ui.small_button("+").clicked() {
                 self.create_entity = true;
             }
+            if self.selection.entities.len() >= 2 {
+                if ui.small_button("Parent").clicked() {
+                    self.parent_selected = true;
+                }
+                if ui.small_button("Unparent").clicked() {
+                    self.unparent_selected = true;
+                }
+            }
             if let Some(primary) = self.selection.primary() {
                 if ui.small_button("Duplicate").clicked() {
                     self.duplicate_entity = Some(primary);
@@ -113,7 +124,9 @@ impl DockViewer<'_> {
         ui.separator();
         for (entity, name) in self.entities {
             let selected = self.selection.contains(*entity);
-            let response = ui.selectable_label(selected, name);
+            let depth = self.depth(*entity, 0);
+            let label = format!("{}{}", "  ".repeat(depth), name);
+            let response = ui.selectable_label(selected, label);
             if response.clicked() {
                 let ctrl = ui.input(|input| input.modifiers.ctrl);
                 if ctrl {
@@ -123,6 +136,23 @@ impl DockViewer<'_> {
                 }
             }
         }
+    }
+
+    fn depth(&self, entity: Entity, mut depth: usize) -> usize {
+        let mut current = entity;
+        for _ in 0..64 {
+            let parent = self
+                .parents
+                .iter()
+                .find(|(candidate, _)| *candidate == current)
+                .and_then(|(_, parent)| *parent);
+            let Some(parent) = parent else {
+                break;
+            };
+            depth += 1;
+            current = parent;
+        }
+        depth.min(16)
     }
 
     fn show_inspector(&mut self, ui: &mut egui::Ui) {
