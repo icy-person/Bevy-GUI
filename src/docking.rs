@@ -1,0 +1,212 @@
+use bevy::prelude::*;
+use egui_dock::{DockArea, DockState, TabViewer};
+use bevy_egui::egui;
+
+use crate::{editor::EditorUiState, project::{EditorMode, ProjectState}, selection::SelectionState};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum EditorTab {
+    Viewport,
+    Hierarchy,
+    Inspector,
+    Assets,
+    Console,
+    Plugins,
+}
+
+impl EditorTab {
+    pub fn title(self) -> &'static str {
+        match self {
+            Self::Viewport => "Viewport",
+            Self::Hierarchy => "Hierarchy",
+            Self::Inspector => "Inspector",
+            Self::Assets => "Asset Browser",
+            Self::Console => "Console",
+            Self::Plugins => "Plugins",
+        }
+    }
+}
+
+#[derive(Resource)]
+pub struct EditorDockState {
+    pub state: DockState<EditorTab>,
+}
+
+impl Default for EditorDockState {
+    fn default() -> Self {
+        let mut state = DockState::new(vec![
+            EditorTab::Viewport,
+            EditorTab::Hierarchy,
+            EditorTab::Inspector,
+            EditorTab::Assets,
+            EditorTab::Console,
+            EditorTab::Plugins,
+        ]);
+        let tree = state.main_surface_mut();
+        let root = tree.root_node();
+        let [_old, left] = tree.split_left(root, 0.19, vec![EditorTab::Hierarchy]);
+        let [_old, right] = tree.split_right(root, 0.20, vec![EditorTab::Inspector]);
+        let [_old, bottom] = tree.split_below(root, 0.74, vec![EditorTab::Console]);
+        let _ = (left, right, bottom);
+        Self { state }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct TransformEdit {
+    pub entity: Entity,
+    pub translation: Vec3,
+    pub rotation: Vec3,
+    pub scale: Vec3,
+}
+
+pub struct DockViewer<'a> {
+    pub project: &'a mut ProjectState,
+    pub selection: &'a mut SelectionState,
+    pub ui_state: &'a mut EditorUiState,
+    pub entities: &'a [(Entity, String)],
+    pub selected_transform: Option<TransformEdit>,
+    pub assets: &'a [String],
+    pub plugin_names: &'a [String],
+    pub command_count: usize,
+    pub transform_edit: Option<TransformEdit>,
+    pub viewport_focused: bool,
+}
+
+impl TabViewer for DockViewer<'_> {
+    type Tab = EditorTab;
+
+    fn title(&mut self, tab: &mut Self::Tab) -> egui::WidgetText {
+        tab.title().into()
+    }
+
+    fn ui(&mut self, ui: &mut egui::Ui, tab: &mut Self::Tab) {
+        match *tab {
+            EditorTab::Viewport => {
+                self.viewport_focused = true;
+                ui.horizontal(|ui| {
+                    ui.strong("Scene");
+                    ui.separator();
+                    if ui.selectable_label(self.project.mode == EditorMode::Edit, "Edit").clicked() {
+                        self.project.mode = EditorMode::Edit;
+                    }
+                    if ui.selectable_label(self.project.mode == EditorMode::Play, "Play").clicked() {
+                        self.project.mode = EditorMode::Play;
+                    }
+                    if ui.selectable_label(self.project.mode == EditorMode::Paused, "Pause").clicked() {
+                        self.project.mode = EditorMode::Paused;
+                    }
+                    ui.separator();
+                    ui.label("W Translate   E Rotate   R Scale   |   Q/Esc focus");
+                });
+                ui.separator();
+                ui.add_space(4.0);
+                ui.centered_and_justified(|ui| {
+                    ui.vertical_centered(|ui| {
+                        ui.heading("3D Viewport");
+                        ui.label("The live Bevy camera renders behind this transparent dock surface.");
+                        ui.label("Click entities in the scene or use the Hierarchy tab to select them.");
+                        ui.label("Drag the built-in Bevy 0.19 transform gizmo to move, rotate or scale.");
+                    });
+                });
+            }
+            EditorTab::Hierarchy => {
+                ui.heading("Scene Hierarchy");
+                ui.separator();
+                for (entity, name) in self.entities {
+                    let selected = self.selection.entity == Some(*entity);
+                    if ui.selectable_label(selected, name).clicked() {
+                        self.selection.select(*entity);
+                    }
+                }
+            }
+            EditorTab::Inspector => {
+                ui.heading("Inspector");
+                ui.separator();
+                if let Some(mut edit) = self.selected_transform {
+                    ui.label(format!("Entity {:?}", edit.entity));
+                    ui.separator();
+                    ui.collapsing("Transform", |ui| {
+                        ui.label("Translation");
+                        ui.horizontal(|ui| {
+                            ui.add(egui::DragValue::new(&mut edit.translation.x).speed(0.05));
+                            ui.add(egui::DragValue::new(&mut edit.translation.y).speed(0.05));
+                            ui.add(egui::DragValue::new(&mut edit.translation.z).speed(0.05));
+                        });
+                        ui.label("Rotation (degrees)");
+                        ui.horizontal(|ui| {
+                            ui.add(egui::DragValue::new(&mut edit.rotation.x).speed(0.5));
+                            ui.add(egui::DragValue::new(&mut edit.rotation.y).speed(0.5));
+                            ui.add(egui::DragValue::new(&mut edit.rotation.z).speed(0.5));
+                        });
+                        ui.label("Scale");
+                        ui.horizontal(|ui| {
+                            ui.add(egui::DragValue::new(&mut edit.scale.x).speed(0.02));
+                            ui.add(egui::DragValue::new(&mut edit.scale.y).speed(0.02));
+                            ui.add(egui::DragValue::new(&mut edit.scale.z).speed(0.02));
+                        });
+                    });
+                    if ui.button("Apply Transform").clicked() {
+                        self.transform_edit = Some(edit);
+                    } else {
+                        self.selected_transform = Some(edit);
+                    }
+                    ui.separator();
+                    ui.collapsing("Components", |ui| {
+                        ui.label("Bevy reflection/component editing is the next inspector layer.");
+                    });
+                } else {
+                    ui.weak("Nothing selected");
+                }
+            }
+            EditorTab::Assets => {
+                ui.heading("Asset Browser");
+                ui.separator();
+                ui.label(format!("{} discovered files", self.assets.len()));
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    for path in self.assets.iter().take(500) {
+                        ui.selectable_label(false, path);
+                    }
+                });
+            }
+            EditorTab::Console => {
+                ui.heading("Console");
+                ui.separator();
+                ui.monospace("[info] plugin-first editor kernel online");
+                ui.monospace(format!("[info] {} commands registered", self.command_count));
+                ui.monospace(format!("[info] {} plugins installed", self.plugin_names.len()));
+                if self.project.dirty {
+                    ui.monospace("[warn] current scene has unsaved changes");
+                }
+                ui.monospace(format!("[info] status: {}", self.ui_state.status));
+            }
+            EditorTab::Plugins => {
+                ui.heading("Plugins");
+                ui.separator();
+                for plugin in self.plugin_names {
+                    ui.label(plugin);
+                }
+            }
+        }
+    }
+
+    fn clear_background(&self, tab: &Self::Tab) -> bool {
+        !matches!(tab, EditorTab::Viewport)
+    }
+
+    fn scroll_bars(&self, tab: &Self::Tab) -> [bool; 2] {
+        if matches!(tab, EditorTab::Viewport) { [false, false] } else { [true, true] }
+    }
+
+    fn is_closeable(&self, tab: &Self::Tab) -> bool {
+        !matches!(tab, EditorTab::Viewport)
+    }
+}
+
+pub fn show_dock_area(ui: &mut egui::Ui, dock: &mut EditorDockState, viewer: &mut DockViewer<'_>) {
+    DockArea::new(&mut dock.state)
+        .show_add_buttons(true)
+        .show_add_popup(true)
+        .show_close_buttons(true)
+        .show_inside(ui, viewer);
+}
