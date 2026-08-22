@@ -4,13 +4,16 @@ Bevy-GUI is a plugin-first game-editor platform built on Bevy 0.19. The codebase
 
 ## Implemented systems
 
+- Material 3 inspired editor theme and workspace chrome
+- Welcome / project entry screen with New Project and Open Project flow
+- Material-style app bar, navigation rail, surfaces and grouped inspector sections
 - 3D viewport foundation with Bevy FreeCamera and InfiniteGrid
 - Picking and Transform Gizmo integration
 - Translate / Rotate / Scale and World / Local switching
 - Multi-selection and tree-style scene hierarchy
 - Create / Duplicate / Delete entity authoring
 - Parent / Unparent authoring
-- Transform inspector with undo/redo history
+- Transform inspector with name editing and undo/redo history
 - Versioned scene JSON with stable IDs and parent relationships
 - Project manifest loading before editor startup
 - Main-scene loading on editor startup
@@ -54,7 +57,10 @@ src/
 │   ├── mod.rs
 │   ├── actions.rs
 │   ├── assets.rs
-│   └── persistence.rs
+│   ├── persistence.rs
+│   ├── theme.rs
+│   ├── welcome.rs
+│   └── workspace.rs
 │
 ├── viewport/
 │   ├── mod.rs
@@ -76,6 +82,8 @@ src/
 ## Design rules
 
 The editor core does not own game-specific components. Cross-subsystem communication goes through resources, commands, registries, selection state and scene/project documents. Large systems are split into focused files so new features do not require rewriting `app.rs` or a monolithic UI module.
+
+The visual system is Material 3 inspired rather than a direct copy of a platform implementation: surfaces, hierarchy, navigation, expressive actions, spacing and strong primary actions are shared across the editor shell and its panels.
 
 ## Build checks
 
