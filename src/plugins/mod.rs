@@ -12,12 +12,6 @@ pub struct InspectorPlugin;
 pub struct AssetBrowserPlugin;
 pub struct ConsolePlugin;
 
-macro_rules! register_plugin {
-    ($app:expr, $ty:ty, $name:literal, $version:literal) => {
-        <$ty as EditorPlugin>::build(&<$ty>::default(), $app);
-    };
-}
-
 impl Default for SceneEditorPlugin { fn default() -> Self { Self } }
 impl Default for ViewportPlugin { fn default() -> Self { Self } }
 impl Default for InspectorPlugin { fn default() -> Self { Self } }
