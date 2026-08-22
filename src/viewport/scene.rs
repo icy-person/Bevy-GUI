@@ -3,7 +3,7 @@ use bevy::dev_tools::infinite_grid::InfiniteGrid;
 use bevy::prelude::*;
 use std::collections::BTreeMap;
 
-use super::components::{Editor3dCamera, EditorEntity, InitialSelected};
+use super::components::{Editor3dCamera, Editor3dGrid, EditorEntity, InitialSelected};
 use crate::{load_scene, EditorParent, ProjectState};
 
 pub fn setup_editor_scene(
@@ -20,7 +20,7 @@ pub fn setup_editor_scene(
         TransformGizmoCamera,
         Name::new("Editor Camera 3D"),
     ));
-    commands.spawn((InfiniteGrid, Editor3dCamera, Name::new("Editor Grid 3D")));
+    commands.spawn((InfiniteGrid, Editor3dGrid, Name::new("Editor Grid 3D")));
     commands.spawn((
         DirectionalLight {
             illuminance: 12_000.0,
