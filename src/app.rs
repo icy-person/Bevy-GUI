@@ -20,8 +20,7 @@ impl Plugin for BevyGuiPlugin {
             .init_resource::<PanelRegistry>();
 
         register_builtin_state(app);
-        register_default_commands(app);
-        app.add_systems(Startup, setup_editor_scene)
+        app.add_systems(Startup, (register_default_commands, setup_editor_scene))
             .add_systems(Update, editor_ui_system);
     }
 }
@@ -63,7 +62,7 @@ fn setup_editor_scene(
     commands.spawn((
         DirectionalLight {
             illuminance: 12_000.0,
-            shadows_enabled: true,
+            shadow_maps_enabled: true,
             ..default()
         },
         Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.8, -0.5, 0.0)),
@@ -98,14 +97,11 @@ fn editor_ui_system(
     mut initial: Option<ResMut<InitialSelected>>,
     names: Query<(Entity, Option<&Name>), Without<Window>>,
     transforms: Query<&Transform>,
-    commands_registry: Res<EditorCommandRegistry>,
 ) {
     let Ok(ctx) = contexts.ctx_mut() else { return };
 
     if let Some(initial) = initial.take() {
         selection.select(initial.0);
-        // The resource is intentionally dropped after the first frame.
-        commands_registry.iter().count();
     }
 
     egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
