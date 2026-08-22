@@ -62,6 +62,12 @@ fn editor_ui_system(mut mut_params: EditorUiParams) -> Result {
         })
         .collect();
 
+    let selected_name = mut_params
+        .selection
+        .primary()
+        .and_then(|entity| mut_params.names.get(entity).ok().and_then(|(_, name)| name))
+        .map(|name| name.as_str().to_owned());
+
     let parent_map: Vec<(Entity, Option<Entity>)> = {
         let parents = mut_params.parent_queries.p0();
         entities
@@ -110,6 +116,7 @@ fn editor_ui_system(mut mut_params: EditorUiParams) -> Result {
         entities: &entities,
         parents: &parent_map,
         selected_transform,
+        selected_name,
         assets: &asset_paths,
         plugin_names: &plugin_names,
         command_count: mut_params.registry.iter().count(),
