@@ -1,6 +1,6 @@
 //! Bevy-GUI: a plugin-first editor platform for Bevy.
-//! The public surface is intentionally small; implementation is split into
-//! editor, viewport, UI, scene, project, command, runtime and asset subsystems.
+//! Implementation is split into focused editor, viewport, UI, scene, project,
+//! command, runtime, asset and export subsystems.
 
 pub mod app;
 pub mod assets;
@@ -8,6 +8,7 @@ pub mod command;
 pub mod command_executor;
 pub mod docking;
 pub mod editor;
+pub mod export;
 pub mod history;
 pub mod panel;
 pub mod plugins;
@@ -25,6 +26,7 @@ pub use command::{EditorCommand, EditorCommandBus, EditorCommandId, EditorComman
 pub use command_executor::CommandExecutionState;
 pub use docking::{EditorDockState, EditorTab};
 pub use editor::{EditorPanel, EditorPanelContext, EditorPlugin, EditorPluginRegistry};
+pub use export::{default_profile, export_project, ExportError, ExportProfile, ExportReport};
 pub use history::{TransformHistory, TransformSnapshot};
 pub use panel::PanelRegistry;
 pub use project::{load_project, save_project, ProjectIoError, ProjectManifest, ProjectState};
