@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use bevy_egui::egui;
 use egui_dock::{DockArea, DockState, TabViewer};
+use egui_dock::dock_state::tree::NodeIndex;
 
 use crate::{
     editor::EditorUiState,
@@ -40,7 +41,7 @@ impl Default for EditorDockState {
     fn default() -> Self {
         let mut state = DockState::new(vec![EditorTab::Viewport]);
         let tree = state.main_surface_mut();
-        let root = tree.root_node().expect("dock state must have a root node");
+        let root = NodeIndex::root();
         let [_old, left] = tree.split_left(root, 0.20, vec![EditorTab::Hierarchy]);
         let [_old, right] = tree.split_right(root, 0.20, vec![EditorTab::Inspector]);
         tree.split_below(root, 0.74, vec![EditorTab::Console]);
