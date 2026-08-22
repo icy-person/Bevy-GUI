@@ -13,3 +13,6 @@ pub struct EditorEntity;
 
 #[derive(Component)]
 pub struct Editor3dCamera;
+
+#[derive(Component)]
+pub struct Editor3dGrid;
