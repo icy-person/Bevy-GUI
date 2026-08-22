@@ -15,7 +15,7 @@ pub mod scene;
 pub mod selection;
 
 pub use app::BevyGuiPlugin;
-pub use command::{EditorCommand, EditorCommandId, EditorCommandRegistry};
+pub use command::{EditorCommand, EditorCommandBus, EditorCommandId, EditorCommandRegistry};
 pub use docking::{EditorDockState, EditorTab};
 pub use editor::{EditorPanel, EditorPanelContext, EditorPlugin, EditorPluginRegistry};
 pub use history::{TransformHistory, TransformSnapshot};
