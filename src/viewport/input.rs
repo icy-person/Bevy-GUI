@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 use crate::{
     command::{EditorCommandBus, EditorCommandId},
+    editor::{EditorUiState, ViewportMode},
     history::TransformHistory,
     project::{EditorMode, ProjectState},
 };
@@ -9,11 +10,19 @@ use crate::{
 pub fn editor_input(
     keys: Res<ButtonInput<KeyCode>>,
     mut project: ResMut<ProjectState>,
+    mut editor: ResMut<EditorUiState>,
     mut gizmo: ResMut<TransformGizmoSettings>,
     mut history: ResMut<TransformHistory>,
     mut transforms: Query<&mut Transform>,
     mut bus: ResMut<EditorCommandBus>,
 ) {
+    if keys.just_pressed(KeyCode::Digit1) {
+        editor.viewport_mode = ViewportMode::TwoD;
+    }
+    if keys.just_pressed(KeyCode::Digit2) {
+        editor.viewport_mode = ViewportMode::ThreeD;
+    }
+
     if keys.just_pressed(KeyCode::KeyW) {
         gizmo.mode = TransformGizmoMode::Translate;
     }
