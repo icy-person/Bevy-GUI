@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 use std::{fs, io, path::Path};
 use thiserror::Error;
 
+use crate::scene_model::EditorParent;
+
 #[derive(Component, Debug, Default, Clone, Copy)]
 pub struct SceneNode;
 
@@ -14,6 +16,10 @@ pub struct SceneDocument {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SceneEntity {
+    #[serde(default)]
+    pub id: u64,
+    #[serde(default)]
+    pub parent: Option<u64>,
     pub name: String,
     pub translation: [f32; 3],
     pub rotation: [f32; 4],
@@ -26,48 +32,98 @@ impl SceneDocument {
         I: IntoIterator<Item = (String, Transform)>,
     {
         Self {
-            format_version: 1,
+            format_version: 2,
             entities: entities
                 .into_iter()
-                .map(|(name, transform)| SceneEntity {
-                    name,
-                    translation: transform.translation.to_array(),
-                    rotation: [
-                        transform.rotation.x,
-                        transform.rotation.y,
-                        transform.rotation.z,
-                        transform.rotation.w,
-                    ],
-                    scale: transform.scale.to_array(),
+                .enumerate()
+                .map(|(index, (name, transform))| SceneEntity::from_transform(index as u64 + 1, None, name, transform))
+                .collect(),
+        }
+    }
+
+    pub fn from_world<I>(entities: I) -> Self
+    where
+        I: IntoIterator<Item = (Entity, String, Transform, Option<Entity>)>,
+    {
+        let mut ids = std::collections::BTreeMap::new();
+        let snapshot: Vec<_> = entities.into_iter().collect();
+        for (index, (entity, _, _, _)) in snapshot.iter().enumerate() {
+            ids.insert(*entity, index as u64 + 1);
+        }
+        Self {
+            format_version: 2,
+            entities: snapshot
+                .into_iter()
+                .enumerate()
+                .map(|(index, (entity, name, transform, parent))| {
+                    SceneEntity::from_transform(
+                        index as u64 + 1,
+                        parent.and_then(|value| ids.get(&value).copied()),
+                        name,
+                        transform,
+                    )
                 })
                 .collect(),
         }
     }
 }
 
+impl SceneEntity {
+    fn from_transform(id: u64, parent: Option<u64>, name: String, transform: Transform) -> Self {
+        Self {
+            id,
+            parent,
+            name,
+            translation: transform.translation.to_array(),
+            rotation: [
+                transform.rotation.x,
+                transform.rotation.y,
+                transform.rotation.z,
+                transform.rotation.w,
+            ],
+            scale: transform.scale.to_array(),
+        }
+    }
+
+    pub fn transform(&self) -> Transform {
+        Transform {
+            translation: Vec3::from_array(self.translation),
+            rotation: Quat::from_xyzw(
+                self.rotation[0],
+                self.rotation[1],
+                self.rotation[2],
+                self.rotation[3],
+            ),
+            scale: Vec3::from_array(self.scale),
+        }
+    }
+}
+
 pub fn spawn_scene(commands: &mut Commands, document: &SceneDocument) -> Vec<Entity> {
-    document
-        .entities
-        .iter()
-        .map(|entity| {
-            commands
-                .spawn((
-                    Name::new(entity.name.clone()),
-                    Transform {
-                        translation: Vec3::from_array(entity.translation),
-                        rotation: Quat::from_xyzw(
-                            entity.rotation[0],
-                            entity.rotation[1],
-                            entity.rotation[2],
-                            entity.rotation[3],
-                        ),
-                        scale: Vec3::from_array(entity.scale),
-                    },
-                    SceneNode,
-                ))
-                .id()
-        })
-        .collect()
+    let mut spawned = Vec::with_capacity(document.entities.len());
+    let mut by_id = std::collections::BTreeMap::new();
+    for entity in &document.entities {
+        let id = commands
+            .spawn((
+                Name::new(entity.name.clone()),
+                entity.transform(),
+                SceneNode,
+                EditorParent(None),
+            ))
+            .id();
+        spawned.push(id);
+        by_id.insert(entity.id, id);
+    }
+    for (index, entity) in document.entities.iter().enumerate() {
+        if let Some(parent_id) = entity.parent {
+            if let Some(parent) = by_id.get(&parent_id) {
+                commands
+                    .entity(spawned[index])
+                    .insert(EditorParent(Some(*parent)));
+            }
+        }
+    }
+    spawned
 }
 
 #[derive(Debug, Error)]
@@ -113,8 +169,10 @@ mod tests {
         )]);
         let json = serde_json::to_string(&document).expect("scene serialization should succeed");
         let restored: SceneDocument = serde_json::from_str(&json).expect("scene parsing should succeed");
-        assert_eq!(restored.format_version, 1);
+        assert_eq!(restored.format_version, 2);
         assert_eq!(restored.entities.len(), 1);
+        assert_eq!(restored.entities[0].id, 1);
+        assert_eq!(restored.entities[0].parent, None);
         assert_eq!(restored.entities[0].name, "Player");
         assert_eq!(restored.entities[0].translation, [1.0, 2.0, 3.0]);
         assert_eq!(restored.entities[0].scale, [2.0, 2.0, 2.0]);
