@@ -1,34 +1,63 @@
 # Bevy-GUI
 
-A plugin-first, native Rust editor shell for the Bevy game engine.
+A plugin-first editor platform built on Bevy 0.19. The project targets a Godot-class workflow rather than a fixed demo UI: projects, scenes, assets, authoring tools, runtime play sessions, commands and panels are separate extensible subsystems.
+
+## Current platform
+
+- 3D editor viewport foundation with Bevy FreeCamera and InfiniteGrid
+- Bevy picking and Transform Gizmo integration
+- Translate / Rotate / Scale and World / Local switching
+- Multi-selection in the scene hierarchy
+- Create, Duplicate and Delete entity authoring
+- Transform inspector with undo/redo history
+- Docking workspace with Viewport, Hierarchy, Inspector, Assets, Console and Plugins
+- Plugin registry and independent panel registry
+- Command registry and editor command bus
+- Project manifest persistence (`project.godot-rs.json`)
+- Scene JSON serialization and round-trip tests
+- Play / Pause / Stop session snapshots
+- Asset filesystem browser
+- CI checks for compile, formatting, clippy and tests
 
 ## Architecture
 
-The editor kernel is intentionally small. Features are installed as Bevy plugins and discoverable through registries rather than being hard-coded into one monolithic UI.
-
-- **EditorPlugin** — lifecycle boundary for editor capabilities.
-- **PanelRegistry** — extension point for dockable/editor panels.
-- **EditorCommandRegistry** — command palette, menus and shortcuts can be layered on top.
-- **SelectionState** — shared cross-panel selection model.
-- **ProjectState** — serializable project/session state.
-- **Built-in plugins** — scene, viewport, inspector, asset browser and console.
-
-## Current stack
-
-- Bevy 0.19
-- `bevy_egui` 0.41
-- egui 0.36
-- Rust 2024 edition
-- Native GPU path through Bevy/wgpu
-
-## Direction
-
-The project is intended to grow into a modular Bevy editor rather than a demo UI. The next layers are scene serialization, real 3D viewport rendering/picking, transform gizmos, asset indexing and hot reload, reflection-driven component inspectors, undo/redo transactions, project settings, profiler tooling, plugin discovery, and Android build/deploy tooling.
-
-## Run
-
-```bash
-cargo run --release
+```text
+bevy-gui
+├── editor core
+│   ├── plugin API
+│   ├── panel registry
+│   ├── command registry / bus
+│   ├── selection
+│   └── transform history
+├── project system
+│   ├── manifest
+│   ├── main scene
+│   └── project settings
+├── scene system
+│   ├── document format
+│   ├── save/load
+│   └── SceneNode authoring marker
+├── runtime
+│   └── isolated PlaySession state
+└── UI plugins
+    ├── viewport
+    ├── scene hierarchy
+    ├── inspector
+    ├── asset browser
+    └── console
 ```
 
-The editor is expected to remain usable as a host application while individual editor plugins can later be disabled or replaced by downstream projects.
+## Design rule
+
+The editor core does not own game-specific components. Features are exposed through plugins, commands, registries and resources so external editor extensions can add panels, tools and importers without rewriting the core.
+
+## Build
+
+```bash
+cargo check --all-targets --all-features
+cargo fmt --all -- --check
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test --all-targets --all-features
+```
+
+The Linux CI runner installs the native graphics/audio development libraries required by Bevy and its windowing stack.
