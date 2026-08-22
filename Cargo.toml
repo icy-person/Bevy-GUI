@@ -3,7 +3,7 @@ name = "bevy-gui"
 version = "0.1.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
-description = "Plugin-first editor shell for the Bevy game engine"
+description = "Plugin-first editor platform for the Bevy game engine"
 rust-version = "1.95"
 
 [dependencies]
@@ -19,11 +19,6 @@ tracing = "0.1"
 [features]
 default = ["native-editor"]
 native-editor = []
-
-[lints.clippy]
-collapsible_if = "allow"
-too_many_arguments = "allow"
-drop_non_drop = "allow"
 
 [profile.dev]
 opt-level = 1
