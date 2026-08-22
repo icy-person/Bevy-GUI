@@ -10,3 +10,6 @@ pub struct GizmoHistoryTracker {
 
 #[derive(Component)]
 pub struct EditorEntity;
+
+#[derive(Component)]
+pub struct Editor3dCamera;
