@@ -1,7 +1,6 @@
 use bevy::camera_controller::free_camera::FreeCamera;
 use bevy::dev_tools::infinite_grid::InfiniteGrid;
 use bevy::prelude::*;
-use bevy::picking::prelude::*;
 use std::collections::BTreeMap;
 
 use super::components::{EditorEntity, InitialSelected};
