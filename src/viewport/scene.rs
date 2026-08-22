@@ -2,9 +2,10 @@ use bevy::camera_controller::free_camera::FreeCamera;
 use bevy::dev_tools::infinite_grid::InfiniteGrid;
 use bevy::prelude::*;
 use bevy::picking::prelude::*;
+use std::collections::BTreeMap;
 
 use super::components::{EditorEntity, InitialSelected};
-use crate::{load_scene, ProjectState};
+use crate::{load_scene, EditorParent, ProjectState};
 
 pub fn setup_editor_scene(
     mut commands: Commands,
@@ -34,28 +35,28 @@ pub fn setup_editor_scene(
         let path = project.root.join(main_scene);
         if let Ok(document) = load_scene(&path) {
             let mut first = None;
+            let mut by_id = BTreeMap::new();
+            let mut parents = Vec::new();
             for entity in document.entities {
                 let id = commands
                     .spawn((
                         Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
                         MeshMaterial3d(materials.add(StandardMaterial::default())),
-                        Transform {
-                            translation: Vec3::from_array(entity.translation),
-                            rotation: Quat::from_xyzw(
-                                entity.rotation[0],
-                                entity.rotation[1],
-                                entity.rotation[2],
-                                entity.rotation[3],
-                            ),
-                            scale: Vec3::from_array(entity.scale),
-                        },
+                        entity.transform(),
                         Pickable::default(),
                         Name::new(entity.name),
                         EditorEntity,
+                        EditorParent(None),
                     ))
                     .id();
                 commands.entity(id).observe(select_clicked_entity);
+                by_id.insert(entity.id, id);
+                parents.push((id, entity.parent));
                 first.get_or_insert(id);
+            }
+            for (entity, parent_id) in parents {
+                let parent = parent_id.and_then(|id| by_id.get(&id).copied());
+                commands.entity(entity).insert(EditorParent(parent));
             }
             if let Some(entity) = first {
                 commands.insert_resource(InitialSelected(entity));
@@ -78,6 +79,7 @@ pub fn setup_editor_scene(
             Pickable::default(),
             Name::new("Player"),
             EditorEntity,
+            EditorParent(None),
         ))
         .id();
     commands.entity(cube).observe(select_clicked_entity);
