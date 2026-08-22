@@ -71,6 +71,7 @@ pub struct DockViewer<'a> {
     pub viewport_focused: bool,
     pub create_entity: bool,
     pub delete_entity: Option<Entity>,
+    pub duplicate_entity: Option<Entity>,
     pub save_requested: bool,
 }
 
@@ -88,34 +89,27 @@ impl TabViewer for DockViewer<'_> {
                 ui.horizontal(|ui| {
                     ui.strong("Scene");
                     ui.separator();
-                    if ui
-                        .selectable_label(self.project.mode == EditorMode::Edit, "Edit")
-                        .clicked()
-                    {
-                        self.project.mode = EditorMode::Edit;
-                    }
-                    if ui
-                        .selectable_label(self.project.mode == EditorMode::Play, "Play")
-                        .clicked()
-                    {
-                        self.project.mode = EditorMode::Play;
-                    }
-                    if ui
-                        .selectable_label(self.project.mode == EditorMode::Paused, "Pause")
-                        .clicked()
-                    {
-                        self.project.mode = EditorMode::Paused;
+                    for (mode, label) in [
+                        (EditorMode::Edit, "Edit"),
+                        (EditorMode::Play, "Play"),
+                        (EditorMode::Paused, "Pause"),
+                    ] {
+                        if ui.selectable_label(self.project.mode == mode, label).clicked() {
+                            self.project.mode = mode;
+                        }
                     }
                     ui.separator();
-                    ui.label("W Translate   E Rotate   R Scale   X World/Local");
+                    ui.label("W Translate   E Rotate   R Scale   X World/Local   Ctrl+Z/Y");
+                    ui.separator();
+                    ui.label(format!("{} selected", self.selection.entities.len()));
                 });
                 ui.separator();
                 ui.centered_and_justified(|ui| {
                     ui.vertical_centered(|ui| {
                         ui.heading("3D Viewport");
-                        ui.label("The Bevy 3D scene remains live beneath the editor UI.");
-                        ui.label("Click a mesh or select it from Hierarchy to activate the gizmo.");
-                        ui.label("Drag the X/Y/Z handles to transform the current selection.");
+                        ui.label("Live Bevy world, FreeCamera and InfiniteGrid are active.");
+                        ui.label("Click geometry to select; use the gizmo to author transforms.");
+                        ui.label("Viewport tools are independent of panels through the plugin API.");
                     });
                 });
             }
@@ -125,21 +119,26 @@ impl TabViewer for DockViewer<'_> {
                     if ui.small_button("+").on_hover_text("Create empty entity").clicked() {
                         self.create_entity = true;
                     }
-                    if let Some(entity) = self.selection.entity {
-                        if ui
-                            .small_button("Delete")
-                            .on_hover_text("Delete selected entity")
-                            .clicked()
-                        {
-                            self.delete_entity = Some(entity);
+                    if self.selection.primary().is_some() {
+                        if ui.small_button("Duplicate").clicked() {
+                            self.duplicate_entity = self.selection.primary();
+                        }
+                        if ui.small_button("Delete").clicked() {
+                            self.delete_entity = self.selection.primary();
                         }
                     }
                 });
                 ui.separator();
                 for (entity, name) in self.entities {
-                    let selected = self.selection.entity == Some(*entity);
-                    if ui.selectable_label(selected, name).clicked() {
-                        self.selection.select(*entity);
+                    let selected = self.selection.contains(*entity);
+                    let response = ui.selectable_label(selected, name);
+                    if response.clicked() {
+                        let ctrl = ui.input(|input| input.modifiers.ctrl);
+                        if ctrl {
+                            self.selection.toggle(*entity);
+                        } else {
+                            self.selection.select(*entity);
+                        }
                     }
                 }
             }
@@ -147,27 +146,21 @@ impl TabViewer for DockViewer<'_> {
                 ui.heading("Inspector");
                 ui.separator();
                 if let Some(mut edit) = self.selected_transform {
-                    ui.label(format!("Entity {:?}", edit.entity));
+                    ui.label(format!("Primary Entity {:?}", edit.entity));
                     ui.separator();
                     ui.collapsing("Transform", |ui| {
-                        ui.label("Translation");
-                        ui.horizontal(|ui| {
-                            ui.add(egui::DragValue::new(&mut edit.translation.x).speed(0.05));
-                            ui.add(egui::DragValue::new(&mut edit.translation.y).speed(0.05));
-                            ui.add(egui::DragValue::new(&mut edit.translation.z).speed(0.05));
-                        });
-                        ui.label("Rotation (degrees)");
-                        ui.horizontal(|ui| {
-                            ui.add(egui::DragValue::new(&mut edit.rotation.x).speed(0.5));
-                            ui.add(egui::DragValue::new(&mut edit.rotation.y).speed(0.5));
-                            ui.add(egui::DragValue::new(&mut edit.rotation.z).speed(0.5));
-                        });
-                        ui.label("Scale");
-                        ui.horizontal(|ui| {
-                            ui.add(egui::DragValue::new(&mut edit.scale.x).speed(0.02));
-                            ui.add(egui::DragValue::new(&mut edit.scale.y).speed(0.02));
-                            ui.add(egui::DragValue::new(&mut edit.scale.z).speed(0.02));
-                        });
+                        for (label, value) in [
+                            ("Translation", &mut edit.translation),
+                            ("Rotation", &mut edit.rotation),
+                            ("Scale", &mut edit.scale),
+                        ] {
+                            ui.label(label);
+                            ui.horizontal(|ui| {
+                                ui.add(egui::DragValue::new(&mut value.x).speed(0.05));
+                                ui.add(egui::DragValue::new(&mut value.y).speed(0.05));
+                                ui.add(egui::DragValue::new(&mut value.z).speed(0.05));
+                            });
+                        }
                     });
                     if ui.button("Apply Transform").clicked() {
                         self.transform_edit = Some(edit);
@@ -176,7 +169,9 @@ impl TabViewer for DockViewer<'_> {
                     }
                     ui.separator();
                     ui.collapsing("Components", |ui| {
-                        ui.label("Reflection-driven component editing is the next inspector layer.");
+                        ui.label("Transform");
+                        ui.label("Name");
+                        ui.label("Mesh / Material are visible through asset references.");
                     });
                 } else {
                     ui.weak("Nothing selected");
@@ -187,7 +182,7 @@ impl TabViewer for DockViewer<'_> {
                 ui.separator();
                 ui.label(format!("{} discovered files", self.assets.len()));
                 egui::ScrollArea::vertical().show(ui, |ui| {
-                    for path in self.assets.iter().take(500) {
+                    for path in self.assets.iter().take(1000) {
                         ui.selectable_label(false, path);
                     }
                 });
@@ -203,6 +198,7 @@ impl TabViewer for DockViewer<'_> {
                 ui.monospace("[info] plugin-first editor kernel online");
                 ui.monospace(format!("[info] {} commands registered", self.command_count));
                 ui.monospace(format!("[info] {} plugins installed", self.plugin_names.len()));
+                ui.monospace(format!("[info] {} selected", self.selection.entities.len()));
                 if self.project.dirty {
                     ui.monospace("[warn] current scene has unsaved changes");
                 }
