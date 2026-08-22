@@ -7,8 +7,7 @@ use bevy_egui::{egui, EguiContexts};
 
 use crate::{
     assets::AssetDatabase,
-    command::{EditorCommandRegistry, EditorCommandBus},
-    command_executor::CommandExecutionState,
+    command::EditorCommandRegistry,
     docking::{show_dock_area, DockViewer, EditorDockState, TransformEdit},
     editor::{EditorPluginRegistry, EditorUiState},
     history::TransformHistory,
@@ -32,8 +31,6 @@ pub struct EditorUiParams<'w, 's> {
     pub project: ResMut<'w, ProjectState>,
     pub selection: ResMut<'w, SelectionState>,
     pub registry: Res<'w, EditorCommandRegistry>,
-    pub bus: ResMut<'w, EditorCommandBus>,
-    pub execution: Res<'w, CommandExecutionState>,
     pub plugins: Res<'w, EditorPluginRegistry>,
     pub assets: Res<'w, AssetDatabase>,
     pub history: ResMut<'w, TransformHistory>,
@@ -112,10 +109,6 @@ fn editor_ui_system(mut params: EditorUiParams) -> Result {
     egui::CentralPanel::default().show(&mut root_ui, |ui| {
         show_dock_area(ui, &mut params.dock, &mut viewer);
     });
-
-    if params.execution.last_error.is_none() && params.execution.last == Some(crate::EditorCommandId("assets.refresh")) {
-        params.bus.emit(crate::EditorCommandId("assets.refresh"));
-    }
 
     let actions = UiActions::from(&viewer);
     apply_entity_actions(
