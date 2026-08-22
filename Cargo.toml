@@ -20,6 +20,11 @@ tracing = "0.1"
 default = ["native-editor"]
 native-editor = []
 
+[lints.clippy]
+collapsible_if = "allow"
+too_many_arguments = "allow"
+drop_non_drop = "allow"
+
 [profile.dev]
 opt-level = 1
 
