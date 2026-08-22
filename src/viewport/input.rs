@@ -31,6 +31,7 @@ pub fn editor_input(
     }
 
     let ctrl = keys.pressed(KeyCode::ControlLeft) || keys.pressed(KeyCode::ControlRight);
+    let shift = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
     if ctrl && keys.just_pressed(KeyCode::KeyZ) {
         history.undo(&mut transforms);
         project.dirty = true;
@@ -41,7 +42,9 @@ pub fn editor_input(
         project.dirty = true;
         bus.emit(EditorCommandId("edit.redo"));
     }
-    if ctrl && keys.just_pressed(KeyCode::KeyS) {
+    if ctrl && keys.just_pressed(KeyCode::KeyS) && shift {
+        bus.emit(EditorCommandId("scene.save"));
+    } else if ctrl && keys.just_pressed(KeyCode::KeyS) {
         bus.emit(EditorCommandId("project.save"));
     }
     if ctrl && keys.just_pressed(KeyCode::KeyD) {
@@ -49,6 +52,15 @@ pub fn editor_input(
     }
     if ctrl && keys.just_pressed(KeyCode::KeyA) {
         bus.emit(EditorCommandId("scene.new_entity"));
+    }
+    if ctrl && keys.just_pressed(KeyCode::KeyB) {
+        bus.emit(EditorCommandId("project.export"));
+    }
+    if ctrl && keys.just_pressed(KeyCode::KeyO) {
+        bus.emit(EditorCommandId("scene.open"));
+    }
+    if keys.just_pressed(KeyCode::F5) {
+        bus.emit(EditorCommandId("assets.refresh"));
     }
     if keys.just_pressed(KeyCode::Delete) {
         bus.emit(EditorCommandId("scene.delete"));
