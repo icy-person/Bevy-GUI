@@ -1,7 +1,6 @@
 use bevy::prelude::*;
-use std::collections::BTreeSet;
 
-/// Shared selection model used by the hierarchy, viewport, inspector and tools.
+/// Shared selection model used by hierarchy, viewport, inspector and tools.
 #[derive(Resource, Default, Debug, Clone)]
 pub struct SelectionState {
     pub entities: Vec<Entity>,
@@ -28,7 +27,12 @@ impl SelectionState {
     where
         I: IntoIterator<Item = Entity>,
     {
-        self.entities = entities.into_iter().collect::<BTreeSet<_>>().into_iter().collect();
+        self.entities.clear();
+        for entity in entities {
+            if !self.entities.contains(&entity) {
+                self.entities.push(entity);
+            }
+        }
         self.focused = self.entities.last().copied();
     }
 
