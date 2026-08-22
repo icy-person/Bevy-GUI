@@ -343,7 +343,17 @@ fn editor_ui_system(
         save_requested: false,
     };
 
-    egui::CentralPanel::default().show(ctx, |ui| {
+    // egui 0.35 panels operate on Ui, while bevy_egui exposes a Context.
+    // Build a root Ui explicitly for the editor's docked workspace.
+    let mut root_ui = egui::Ui::new(
+        ctx.clone(),
+        "editor_root".into(),
+        egui::UiBuilder::new()
+            .layer_id(egui::LayerId::background())
+            .max_rect(ctx.viewport_rect()),
+    );
+
+    egui::CentralPanel::default().show(&mut root_ui, |ui| {
         show_dock_area(ui, &mut dock, &mut viewer);
     });
 
