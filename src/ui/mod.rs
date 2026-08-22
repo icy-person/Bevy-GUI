@@ -68,9 +68,14 @@ fn editor_ui_system(mut mut_params: EditorUiParams) -> Result {
         let welcome = &mut *mut_params.welcome;
         let project = &mut *mut_params.project;
         let state = &mut *mut_params.state;
-        egui::CentralPanel::default().show(ctx, |ui| {
-            show_welcome(ui, welcome, project, state);
-        });
+        let mut welcome_ui = egui::Ui::new(
+            ctx.clone(),
+            "welcome_root".into(),
+            egui::UiBuilder::new()
+                .layer_id(egui::LayerId::background())
+                .max_rect(ctx.viewport_rect()),
+        );
+        show_welcome(&mut welcome_ui, welcome, project, state);
         return Ok(());
     }
 
