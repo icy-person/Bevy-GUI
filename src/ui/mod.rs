@@ -12,6 +12,7 @@ use crate::{
     editor::{EditorPluginRegistry, EditorUiState},
     history::TransformHistory,
     project::ProjectState,
+    scene_model::EditorParent,
     selection::SelectionState,
     viewport::EditorEntity,
 };
@@ -36,6 +37,7 @@ pub struct EditorUiParams<'w, 's> {
     pub history: ResMut<'w, TransformHistory>,
     pub transforms: Query<'w, 's, &'static Transform, With<EditorEntity>>,
     pub names: Query<'w, 's, (Entity, Option<&'static Name>), With<EditorEntity>>,
+    pub parents: Query<'w, 's, Option<&'static EditorParent>, With<EditorEntity>>,
     pub commands: Commands<'w, 's>,
 }
 
@@ -121,12 +123,15 @@ fn editor_ui_system(mut params: EditorUiParams) -> Result {
     );
 
     if actions.save_requested {
-        save_editor_project(
-            &mut params.project,
-            &mut params.state,
-            &entities,
-            &params.transforms,
-        );
+        let scene_entities: Vec<(Entity, String, Transform, Option<Entity>)> = entities
+            .iter()
+            .filter_map(|(entity, name)| {
+                let transform = params.transforms.get(*entity).ok().copied()?;
+                let parent = params.parents.get(*entity).ok().flatten().and_then(|p| p.0);
+                Some((*entity, name.clone(), transform, parent))
+            })
+            .collect();
+        save_editor_project(&mut params.project, &mut params.state, &scene_entities);
     }
 
     Ok(())
