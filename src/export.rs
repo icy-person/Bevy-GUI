@@ -42,7 +42,6 @@ pub fn export_project(project: &ProjectState, profile: &ExportProfile) -> Result
     let mut files = 0usize;
     let mut bytes = 0u64;
 
-    let manifest_root = profile.output.join("project.godot-rs.json");
     let mut exported = project.clone();
     exported.root = profile.output.clone();
     exported.dirty = false;
@@ -62,7 +61,6 @@ pub fn export_project(project: &ProjectState, profile: &ExportProfile) -> Result
         }
     }
 
-    let _ = manifest_root;
     Ok(ExportReport {
         output: profile.output.clone(),
         files,
@@ -89,9 +87,10 @@ fn copy_file(source: &Path, destination: &Path, files: &mut usize, bytes: &mut u
     if let Some(parent) = destination.parent() {
         fs::create_dir_all(parent).map_err(ExportError::CreateDirectory)?;
     }
-    let size = fs::copy(source, destination).map_err(|source| ExportError::Copy {
-        path: source.to_path_buf(),
-        source,
+    let source_path = source.to_path_buf();
+    let size = fs::copy(source, destination).map_err(|error| ExportError::Copy {
+        path: source_path,
+        source: error,
     })?;
     *files += 1;
     *bytes += size;
