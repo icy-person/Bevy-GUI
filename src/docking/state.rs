@@ -2,8 +2,6 @@ use bevy::prelude::*;
 use egui_dock::dock_state::tree::NodeIndex;
 use egui_dock::DockState;
 
-use crate::editor::EditorUiState;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum EditorTab {
     Viewport,
@@ -53,6 +51,3 @@ pub struct TransformEdit {
     pub rotation: Vec3,
     pub scale: Vec3,
 }
-
-#[allow(dead_code)]
-fn _state_dependency_marker(_: Option<&EditorUiState>) {}
