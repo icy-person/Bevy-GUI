@@ -1,8 +1,10 @@
+use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::{fs, io, path::Path};
-
-use bevy::prelude::Transform;
 use thiserror::Error;
+
+#[derive(Component, Debug, Default, Clone, Copy)]
+pub struct SceneNode;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SceneDocument {
@@ -43,6 +45,31 @@ impl SceneDocument {
     }
 }
 
+pub fn spawn_scene(commands: &mut Commands, document: &SceneDocument) -> Vec<Entity> {
+    document
+        .entities
+        .iter()
+        .map(|entity| {
+            commands
+                .spawn((
+                    Name::new(entity.name.clone()),
+                    Transform {
+                        translation: Vec3::from_array(entity.translation),
+                        rotation: Quat::from_xyzw(
+                            entity.rotation[0],
+                            entity.rotation[1],
+                            entity.rotation[2],
+                            entity.rotation[3],
+                        ),
+                        scale: Vec3::from_array(entity.scale),
+                    },
+                    SceneNode,
+                ))
+                .id()
+        })
+        .collect()
+}
+
 #[derive(Debug, Error)]
 pub enum SceneIoError {
     #[error("failed to create scene directory: {0}")]
@@ -73,7 +100,6 @@ pub fn load_scene(path: &Path) -> Result<SceneDocument, SceneIoError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bevy::prelude::Vec3;
 
     #[test]
     fn scene_json_round_trip() {
