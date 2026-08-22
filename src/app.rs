@@ -1,12 +1,12 @@
 use bevy::prelude::*;
-use bevy_egui::{egui, EguiContexts, EguiPlugin, EguiPrimaryContextPass};
+use bevy_egui::{EguiContexts, EguiPlugin, EguiPrimaryContextPass, egui};
 
 use crate::{
+    PanelRegistry,
     command::{EditorCommand, EditorCommandId, EditorCommandRegistry},
-    editor::{register_builtin_state, EditorUiState},
+    editor::{EditorUiState, register_builtin_state},
     project::{EditorMode, ProjectState},
     selection::SelectionState,
-    PanelRegistry,
 };
 
 pub struct BevyGuiPlugin;
