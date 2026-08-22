@@ -36,6 +36,18 @@ pub struct EditorPanelContext<'a> {
     pub commands: &'a EditorCommandRegistry,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ViewportMode {
+    TwoD,
+    ThreeD,
+}
+
+impl Default for ViewportMode {
+    fn default() -> Self {
+        Self::ThreeD
+    }
+}
+
 #[derive(Resource, Debug, Clone)]
 pub struct EditorUiState {
     pub show_hierarchy: bool,
@@ -44,6 +56,7 @@ pub struct EditorUiState {
     pub show_console: bool,
     pub show_profiler: bool,
     pub show_viewport: bool,
+    pub viewport_mode: ViewportMode,
     pub status: String,
 }
 
@@ -56,6 +69,7 @@ impl Default for EditorUiState {
             show_console: true,
             show_profiler: false,
             show_viewport: true,
+            viewport_mode: ViewportMode::ThreeD,
             status: "Ready".into(),
         }
     }
