@@ -2,25 +2,28 @@
 
 Bevy-GUI is a plugin-first game-editor platform built on Bevy 0.19. The codebase is organized as independent editor subsystems rather than a single UI file, with the long-term target of a Godot-class workflow.
 
-## Implemented systems
+## Implemented editor systems
 
-- Material 3 inspired editor theme and workspace chrome
-- Welcome / project entry screen with New Project and Open Project flow
-- Material-style app bar, navigation rail, surfaces and grouped inspector sections
-- 3D viewport foundation with Bevy FreeCamera and InfiniteGrid
-- Picking and Transform Gizmo integration
-- Translate / Rotate / Scale and World / Local switching
+- Material 3-inspired editor shell with Welcome/Project entry, app bar and navigation rail
+- 3D viewport with FreeCamera, InfiniteGrid, mesh picking and Transform Gizmo
+- 3D Translate / Rotate / Scale and World / Local switching
+- Configurable 3D grid visibility and transform snapping
+- 2D viewport with Camera2d, orthographic zoom, middle-mouse pan and configurable grid
+- One-click and keyboard switching between 2D and 3D (`1` / `2`)
 - Multi-selection and tree-style scene hierarchy
 - Create / Duplicate / Delete entity authoring
 - Parent / Unparent authoring
-- Transform inspector with name editing and undo/redo history
+- Transform inspector with undo/redo history
 - Versioned scene JSON with stable IDs and parent relationships
 - Project manifest loading before editor startup
 - Main-scene loading on editor startup
 - Play / Pause / Stop runtime snapshots
 - Command Bus and command executor
 - Asset database with classification, file sizes and modification metadata
-- Docking workspace with Viewport, Hierarchy, Inspector, Assets, Console and Plugins
+- Docking workspace with Viewport, Hierarchy, Inspector, Assets, Console, Plugins and Settings
+- Persistent settings with versioned JSON storage
+- Settings categories for Appearance, Editor, Viewport/Grid, Input, Graphics and Project
+- Runtime-configurable camera speed, zoom/pan behavior, grid, snapping and Material appearance
 - Project export pipeline for manifest, scene and assets
 - Plugin and panel registries
 - Focused subsystem file layout
@@ -53,11 +56,15 @@ src/
 │   ├── state.rs
 │   └── viewer.rs
 │
+├── settings/
+│   └── mod.rs
+│
 ├── ui/
 │   ├── mod.rs
 │   ├── actions.rs
 │   ├── assets.rs
 │   ├── persistence.rs
+│   ├── settings.rs
 │   ├── theme.rs
 │   ├── welcome.rs
 │   └── workspace.rs
@@ -70,6 +77,9 @@ src/
 │   ├── gizmo.rs
 │   └── runtime.rs
 │
+├── viewport2d/
+│   └── mod.rs
+│
 └── plugins/
     ├── mod.rs
     ├── scene.rs
@@ -79,11 +89,28 @@ src/
     └── console.rs
 ```
 
+## Settings persistence
+
+Editor settings are stored at:
+
+```text
+.bevy-gui/editor-settings.json
+```
+
+The document is versioned and contains:
+
+```text
+Appearance
+Editor Behavior
+Viewport & Grid
+Input
+Graphics
+Project
+```
+
 ## Design rules
 
 The editor core does not own game-specific components. Cross-subsystem communication goes through resources, commands, registries, selection state and scene/project documents. Large systems are split into focused files so new features do not require rewriting `app.rs` or a monolithic UI module.
-
-The visual system is Material 3 inspired rather than a direct copy of a platform implementation: surfaces, hierarchy, navigation, expressive actions, spacing and strong primary actions are shared across the editor shell and its panels.
 
 ## Build checks
 
