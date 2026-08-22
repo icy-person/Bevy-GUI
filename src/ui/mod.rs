@@ -20,11 +20,11 @@ use crate::{
 
 mod actions;
 mod assets;
-mod persistence;
 pub mod settings;
 pub mod theme;
 pub mod welcome;
 pub mod workspace;
+mod persistence;
 
 use actions::{apply_entity_actions, UiActions};
 use persistence::save_editor_project;
@@ -62,6 +62,7 @@ pub fn install_editor_ui(app: &mut App) {
 fn editor_ui_system(mut mut_params: EditorUiParams) -> Result {
     let ctx = mut_params.contexts.ctx_mut()?;
     theme::apply_material_theme(ctx);
+    theme::apply_material_settings(ctx, &mut_params.settings.settings);
 
     if mut_params.welcome.visible {
         let welcome = &mut *mut_params.welcome;
