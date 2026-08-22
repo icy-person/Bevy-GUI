@@ -1,5 +1,7 @@
 use bevy_egui::egui;
 
+use crate::settings::EditorSettings;
+
 pub fn apply_material_theme(ctx: &egui::Context) {
     let mut style = (*ctx.style()).clone();
     style.spacing.item_spacing = egui::vec2(8.0, 8.0);
@@ -19,6 +21,19 @@ pub fn apply_material_theme(ctx: &egui::Context) {
     style.visuals.widgets.open.bg_fill = egui::Color32::from_rgb(61, 58, 68);
     style.visuals.selection.bg_fill = egui::Color32::from_rgb(74, 78, 105);
     style.visuals.selection.stroke = egui::Stroke::new(1.0, egui::Color32::from_rgb(205, 214, 255));
+    ctx.set_style(style);
+}
+
+pub fn apply_material_settings(ctx: &egui::Context, settings: &EditorSettings) {
+    let mut style = (*ctx.style()).clone();
+    let [r, g, b] = settings.appearance.accent;
+    let accent = egui::Color32::from_rgb(r, g, b);
+    style.visuals.selection.bg_fill = accent;
+    style.visuals.selection.stroke = egui::Stroke::new(1.0, accent.gamma_multiply(1.35));
+    if settings.appearance.compact_controls {
+        style.spacing.item_spacing = egui::vec2(6.0, 5.0);
+        style.spacing.button_padding = egui::vec2(10.0, 6.0);
+    }
     ctx.set_style(style);
 }
 
