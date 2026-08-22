@@ -1,6 +1,6 @@
 //! 3D editor viewport subsystem.
 
-use bevy::camera_controller::free_camera::FreeCameraPlugin;
+use bevy::camera_controller::free_camera::{FreeCamera, FreeCameraPlugin};
 use bevy::dev_tools::infinite_grid::InfiniteGridPlugin;
 use bevy::prelude::*;
 
@@ -30,6 +30,7 @@ pub fn install_viewport(app: &mut App) {
             Update,
             (
                 sync_3d_visibility,
+                apply_camera_settings,
                 select_initial_entity,
                 input::editor_input,
                 runtime::apply_runtime_mode,
@@ -53,6 +54,21 @@ fn sync_3d_visibility(
     let grid_visible = visible && settings.settings.viewport.grid_3d;
     for mut visibility in &mut grid_query {
         *visibility = if grid_visible { Visibility::Inherited } else { Visibility::Hidden };
+    }
+}
+
+fn apply_camera_settings(
+    settings: Res<EditorSettingsState>,
+    mut cameras: Query<&mut FreeCamera, With<Editor3dCamera>>,
+) {
+    if !settings.is_changed() {
+        return;
+    }
+    for mut camera in &mut cameras {
+        camera.walk_speed = settings.settings.viewport.camera_move_speed.max(0.1);
+        camera.run_speed = (camera.walk_speed * 2.0).max(0.2);
+        camera.sensitivity = settings.settings.viewport.camera_orbit_speed.max(0.05);
+        camera.scroll_factor = settings.settings.viewport.camera_zoom_speed.max(0.001).ln().max(0.001);
     }
 }
 
