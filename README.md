@@ -21,6 +21,7 @@ Bevy-GUI is a plugin-first game-editor platform built on Bevy 0.19. The codebase
 - Project export pipeline for manifest, scene and assets
 - Plugin and panel registries
 - Focused subsystem file layout
+- Manual Linux x86_64 release/debug build artifacts
 
 ## Source layout
 
@@ -85,4 +86,10 @@ cargo clippy --all-targets --all-features -- -D warnings
 cargo test --all-targets --all-features
 ```
 
-GitHub Actions is intentionally manual-only (`workflow_dispatch`) so validation runs only when requested.
+## Build an editor binary
+
+The `build` GitHub Actions workflow is manual-only. Run **Actions → build → Run workflow**, choose `release` or `debug`, and download the resulting Linux x86_64 artifact from that workflow.
+
+For local Linux builds, see [`docs/build-and-test.md`](docs/build-and-test.md).
+
+GitHub Actions is intentionally manual-only (`workflow_dispatch`) so validation and binary builds run only when requested.
