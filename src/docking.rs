@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_egui::egui;
-use egui_dock::{DockArea, DockState, TabViewer};
 use egui_dock::dock_state::tree::NodeIndex;
+use egui_dock::{DockArea, DockState, TabViewer};
 
 use crate::{
     editor::EditorUiState,
@@ -113,7 +113,9 @@ impl TabViewer for DockViewer<'_> {
                         ui.heading("3D Viewport");
                         ui.label("Live Bevy world, FreeCamera and InfiniteGrid are active.");
                         ui.label("Click geometry to select; use the gizmo to author transforms.");
-                        ui.label("Viewport tools are independent of panels through the plugin API.");
+                        ui.label(
+                            "Viewport tools are independent of panels through the plugin API.",
+                        );
                     });
                 });
             }
@@ -191,7 +193,7 @@ impl TabViewer for DockViewer<'_> {
                 ui.label(format!("{} discovered files", self.assets.len()));
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     for path in self.assets.iter().take(1000) {
-                        ui.selectable_label(false, path);
+                        let _ = ui.selectable_label(false, path);
                     }
                 });
             }
@@ -205,7 +207,10 @@ impl TabViewer for DockViewer<'_> {
                 ui.separator();
                 ui.monospace("[info] plugin-first editor kernel online");
                 ui.monospace(format!("[info] {} commands registered", self.command_count));
-                ui.monospace(format!("[info] {} plugins installed", self.plugin_names.len()));
+                ui.monospace(format!(
+                    "[info] {} plugins installed",
+                    self.plugin_names.len()
+                ));
                 ui.monospace(format!("[info] {} selected", self.selection.entities.len()));
                 if self.project.dirty {
                     ui.monospace("[warn] current scene has unsaved changes");
@@ -239,11 +244,7 @@ impl TabViewer for DockViewer<'_> {
     }
 }
 
-pub fn show_dock_area(
-    ui: &mut egui::Ui,
-    dock: &mut EditorDockState,
-    viewer: &mut DockViewer<'_>,
-) {
+pub fn show_dock_area(ui: &mut egui::Ui, dock: &mut EditorDockState, viewer: &mut DockViewer<'_>) {
     DockArea::new(&mut dock.state)
         .show_add_buttons(true)
         .show_add_popup(true)
