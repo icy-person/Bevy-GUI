@@ -14,12 +14,14 @@ use crate::{
     project::ProjectState,
     scene_model::EditorParent,
     selection::SelectionState,
+    settings::EditorSettingsState,
     viewport::EditorEntity,
 };
 
 mod actions;
 mod assets;
 mod persistence;
+pub mod settings;
 pub mod theme;
 pub mod welcome;
 pub mod workspace;
@@ -34,6 +36,7 @@ pub struct EditorUiParams<'w, 's> {
     pub contexts: EguiContexts<'w, 's>,
     pub dock: ResMut<'w, EditorDockState>,
     pub state: ResMut<'w, EditorUiState>,
+    pub settings: ResMut<'w, EditorSettingsState>,
     pub welcome: ResMut<'w, WelcomeState>,
     pub project: ResMut<'w, ProjectState>,
     pub selection: ResMut<'w, SelectionState>,
@@ -133,6 +136,7 @@ fn editor_ui_system(mut mut_params: EditorUiParams) -> Result {
         project: &mut mut_params.project,
         selection: &mut mut_params.selection,
         ui_state: &mut mut_params.state,
+        settings: &mut mut_params.settings,
         entities: &entities,
         parents: &parent_map,
         selected_transform,
