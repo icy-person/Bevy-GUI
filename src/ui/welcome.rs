@@ -3,7 +3,10 @@ use std::path::PathBuf;
 use bevy::prelude::*;
 use bevy_egui::egui;
 
-use crate::{editor::EditorUiState, project::{load_project, ProjectState}};
+use crate::{
+    editor::EditorUiState,
+    project::{load_project, ProjectState},
+};
 
 #[derive(Resource, Debug, Clone)]
 pub struct WelcomeState {
@@ -27,7 +30,7 @@ pub fn show_welcome(
     editor: &mut EditorUiState,
 ) {
     let available = ui.available_size();
-    egui::Frame::none()
+    egui::Frame::new()
         .fill(egui::Color32::from_rgb(18, 18, 22))
         .show(ui, |ui| {
             ui.set_min_size(available);
