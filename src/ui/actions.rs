@@ -1,13 +1,13 @@
 use bevy::prelude::*;
 
 use crate::{
+    docking::{DockViewer, TransformEdit},
     history::{TransformHistory, TransformSnapshot},
     project::ProjectState,
     scene_model::EditorParent,
     selection::SelectionState,
+    viewport::EditorEntity,
 };
-use crate::docking::{DockViewer, TransformEdit};
-use crate::viewport::EditorEntity;
 
 #[derive(Clone)]
 pub struct UiActions {
@@ -41,7 +41,7 @@ pub fn select_clicked_entity(event: On<Pointer<Click>>, mut selection: ResMut<Se
 }
 
 pub fn apply_entity_actions(
-    actions: UiActions,
+    actions: &UiActions,
     commands: &mut Commands,
     selection: &mut SelectionState,
     project: &mut ProjectState,
@@ -111,17 +111,17 @@ pub fn apply_entity_actions(
         project.dirty = true;
     }
 
-    if let Some(name) = actions.name_edit
+    if let Some(name) = &actions.name_edit
         && let Some(entity) = selection.primary()
     {
-        commands.entity(entity).insert(Name::new(name));
+        commands.entity(entity).insert(Name::new(name.clone()));
         project.dirty = true;
     }
 
     if let Some(edit) = actions.transform_edit
         && let Ok(current) = transforms.get(edit.entity)
     {
-        apply_transform_edit(history, commands, project, edit, *current);
+        apply_transform_edit(history, commands, project, *edit, *current);
     }
 }
 
