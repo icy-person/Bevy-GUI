@@ -1,7 +1,10 @@
-use bevy::prelude::*;
 use bevy_egui::egui;
 
-use crate::{command::{EditorCommandBus, EditorCommandId}, editor::EditorUiState, project::{EditorMode, ProjectState}};
+use crate::{
+    command::{EditorCommandBus, EditorCommandId},
+    editor::EditorUiState,
+    project::{EditorMode, ProjectState},
+};
 
 use super::welcome::WelcomeState;
 
@@ -12,7 +15,7 @@ pub fn show_app_bar(
     welcome: &mut WelcomeState,
     commands: &mut EditorCommandBus,
 ) {
-    egui::Frame::none()
+    egui::Frame::new()
         .fill(egui::Color32::from_rgb(23, 23, 28))
         .inner_margin(egui::Margin::symmetric(14, 8))
         .show(ui, |ui| {
@@ -68,7 +71,7 @@ pub fn show_app_bar(
 }
 
 pub fn show_navigation_rail(ui: &mut egui::Ui, welcome: &mut WelcomeState) {
-    egui::Frame::none()
+    egui::Frame::new()
         .fill(egui::Color32::from_rgb(24, 24, 30))
         .inner_margin(egui::Margin::symmetric(8, 12))
         .show(ui, |ui| {
