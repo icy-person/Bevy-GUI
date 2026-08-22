@@ -40,7 +40,7 @@ impl Default for EditorDockState {
     fn default() -> Self {
         let mut state = DockState::new(vec![EditorTab::Viewport]);
         let tree = state.main_surface_mut();
-        let root = tree.root_node();
+        let root = tree.root_node().expect("dock state must have a root node");
         let [_old, left] = tree.split_left(root, 0.20, vec![EditorTab::Hierarchy]);
         let [_old, right] = tree.split_right(root, 0.20, vec![EditorTab::Inspector]);
         tree.split_below(root, 0.74, vec![EditorTab::Console]);
@@ -94,7 +94,10 @@ impl TabViewer for DockViewer<'_> {
                         (EditorMode::Play, "Play"),
                         (EditorMode::Paused, "Pause"),
                     ] {
-                        if ui.selectable_label(self.project.mode == mode, label).clicked() {
+                        if ui
+                            .selectable_label(self.project.mode == mode, label)
+                            .clicked()
+                        {
                             self.project.mode = mode;
                         }
                     }
@@ -116,7 +119,11 @@ impl TabViewer for DockViewer<'_> {
             EditorTab::Hierarchy => {
                 ui.horizontal(|ui| {
                     ui.heading("Scene Hierarchy");
-                    if ui.small_button("+").on_hover_text("Create empty entity").clicked() {
+                    if ui
+                        .small_button("+")
+                        .on_hover_text("Create empty entity")
+                        .clicked()
+                    {
                         self.create_entity = true;
                     }
                     if self.selection.primary().is_some() {
@@ -231,7 +238,11 @@ impl TabViewer for DockViewer<'_> {
     }
 }
 
-pub fn show_dock_area(ui: &mut egui::Ui, dock: &mut EditorDockState, viewer: &mut DockViewer<'_>) {
+pub fn show_dock_area(
+    ui: &mut egui::Ui,
+    dock: &mut EditorDockState,
+    viewer: &mut DockViewer<'_>,
+) {
     DockArea::new(&mut dock.state)
         .show_add_buttons(true)
         .show_add_popup(true)
