@@ -12,7 +12,6 @@ use crate::{
     plugins::install_builtin_editor_plugins,
     project::{EditorMode, ProjectState},
     selection::SelectionState,
-    PanelRegistry,
 };
 
 pub struct BevyGuiPlugin;
@@ -35,7 +34,7 @@ impl Plugin for BevyGuiPlugin {
         .init_resource::<SelectionState>()
         .init_resource::<ProjectState>()
         .init_resource::<EditorCommandRegistry>()
-        .init_resource::<PanelRegistry>()
+        .init_resource::<crate::PanelRegistry>()
         .init_resource::<EditorDockState>()
         .insert_resource(TransformHistory::with_capacity(256))
         .init_resource::<GizmoHistoryTracker>();
@@ -50,6 +49,7 @@ impl Plugin for BevyGuiPlugin {
         .add_systems(
             Update,
             (
+                select_initial_entity,
                 keyboard_editor_shortcuts,
                 sync_transform_gizmo_focus,
                 editor_mode_tick,
@@ -140,6 +140,17 @@ fn setup_editor_scene(
     commands.insert_resource(InitialSelected(cube));
 }
 
+fn select_initial_entity(
+    initial: Option<Res<InitialSelected>>,
+    mut selection: ResMut<SelectionState>,
+) {
+    if selection.entity.is_none() {
+        if let Some(initial) = initial {
+            selection.select(initial.0);
+        }
+    }
+}
+
 fn select_clicked_entity(
     event: On<Pointer<Click>>,
     mut selection: ResMut<SelectionState>,
@@ -212,11 +223,10 @@ fn keyboard_editor_shortcuts(
     }
 }
 
-fn editor_mode_tick(time: Res<Time>, mut project: ResMut<ProjectState>) {
+fn editor_mode_tick(time: Res<Time>, project: Res<ProjectState>) {
     if project.mode == EditorMode::Play {
         let _elapsed = time.delta_secs();
-        // Runtime simulation is intentionally isolated behind EditorMode.
-        // Scene systems can later consume this state without changing the UI kernel.
+        // Runtime systems can consume EditorMode::Play without changing the UI kernel.
     }
 }
 
@@ -228,13 +238,11 @@ fn record_finished_gizmo_drag(
 ) {
     if tracker.active_last_frame && !gizmo_state.active {
         if let Some(entity) = gizmo_state.entity {
-            if gizmo_state.start_transform != Transform::default() || entity != Entity::PLACEHOLDER {
-                history.push(TransformSnapshot {
-                    entity,
-                    transform: gizmo_state.start_transform,
-                });
-                project.dirty = true;
-            }
+            history.push(TransformSnapshot {
+                entity,
+                transform: gizmo_state.start_transform,
+            });
+            project.dirty = true;
         }
     }
     tracker.active_last_frame = gizmo_state.active;
@@ -248,14 +256,14 @@ fn editor_ui_system(
     mut selection: ResMut<SelectionState>,
     commands_registry: Res<EditorCommandRegistry>,
     plugins: Res<crate::editor::EditorPluginRegistry>,
-    history: Res<TransformHistory>,
+    mut history: ResMut<TransformHistory>,
     transforms: Query<&Transform>,
     names: Query<(Entity, Option<&Name>)>,
     mut commands: Commands,
 ) -> Result {
     let ctx = contexts.ctx_mut()?;
 
-    egui::TopBottomPanel::top("editor_menu").show(ctx, |ui| {
+    egui::Panel::top("editor_menu").show(ctx, |ui| {
         ui.horizontal(|ui| {
             ui.heading("Bevy-GUI");
             ui.separator();
@@ -269,10 +277,10 @@ fn editor_ui_system(
                 project.dirty = false;
             }
             if ui.button("Undo").clicked() {
-                state.status = format!("Undo available: {}", history.undo_len());
+                state.status = format!("Undo stack: {}", history.undo_len());
             }
             if ui.button("Redo").clicked() {
-                state.status = format!("Redo available: {}", history.redo_len());
+                state.status = format!("Redo stack: {}", history.redo_len());
             }
             ui.separator();
             ui.label(format!("Mode: {:?}", project.mode));
@@ -331,12 +339,7 @@ fn editor_ui_system(
 
     if let Some(edit) = viewer.transform_edit {
         if let Ok(current) = transforms.get(edit.entity) {
-            history_push_and_apply(
-                &mut commands,
-                &mut project,
-                edit,
-                *current,
-            );
+            history_push_and_apply(&mut history, &mut commands, &mut project, edit, *current);
         }
     }
 
@@ -344,29 +347,32 @@ fn editor_ui_system(
 }
 
 fn history_push_and_apply(
+    history: &mut TransformHistory,
     commands: &mut Commands,
     project: &mut ProjectState,
     edit: TransformEdit,
     current: Transform,
 ) {
-    commands.entity(edit.entity).insert(Transform {
+    let rotation = Quat::from_euler(
+        EulerRot::XYZ,
+        edit.rotation.x.to_radians(),
+        edit.rotation.y.to_radians(),
+        edit.rotation.z.to_radians(),
+    );
+    let next = Transform {
         translation: edit.translation,
-        rotation: Quat::from_euler(
-            EulerRot::XYZ,
-            edit.rotation.x.to_radians(),
-            edit.rotation.y.to_radians(),
-            edit.rotation.z.to_radians(),
-        ),
+        rotation,
         scale: edit.scale,
-    });
-    project.dirty = current.translation != edit.translation
-        || current.scale != edit.scale
-        || current.rotation != Quat::from_euler(
-            EulerRot::XYZ,
-            edit.rotation.x.to_radians(),
-            edit.rotation.y.to_radians(),
-            edit.rotation.z.to_radians(),
-        );
+    };
+
+    if current != next {
+        history.push(TransformSnapshot {
+            entity: edit.entity,
+            transform: current,
+        });
+        commands.entity(edit.entity).insert(next);
+        project.dirty = true;
+    }
 }
 
 fn scan_assets(root: &Path, max_depth: usize, max_files: usize) -> Vec<String> {
@@ -396,7 +402,10 @@ fn visit_assets(
             break;
         }
         let path: PathBuf = entry.path();
-        if path.file_name().is_some_and(|name| name == "target" || name == ".git") {
+        if path
+            .file_name()
+            .is_some_and(|name| name == "target" || name == ".git")
+        {
             continue;
         }
         if path.is_dir() {
