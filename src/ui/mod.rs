@@ -7,7 +7,7 @@ use bevy_egui::{egui, EguiContexts};
 
 use crate::{
     assets::AssetDatabase,
-    command::EditorCommandRegistry,
+    command::{EditorCommandBus, EditorCommandRegistry},
     docking::{show_dock_area, DockViewer, EditorDockState, TransformEdit},
     editor::{EditorPluginRegistry, EditorUiState},
     history::TransformHistory,
@@ -20,18 +20,25 @@ use crate::{
 mod actions;
 mod assets;
 mod persistence;
+pub mod theme;
+pub mod welcome;
+pub mod workspace;
 
 use actions::{apply_entity_actions, UiActions};
 use persistence::save_editor_project;
+use welcome::{show_welcome, WelcomeState};
+use workspace::{show_app_bar, show_navigation_rail};
 
 #[derive(SystemParam)]
 pub struct EditorUiParams<'w, 's> {
     pub contexts: EguiContexts<'w, 's>,
     pub dock: ResMut<'w, EditorDockState>,
     pub state: ResMut<'w, EditorUiState>,
+    pub welcome: ResMut<'w, WelcomeState>,
     pub project: ResMut<'w, ProjectState>,
     pub selection: ResMut<'w, SelectionState>,
     pub registry: Res<'w, EditorCommandRegistry>,
+    pub command_bus: ResMut<'w, EditorCommandBus>,
     pub plugins: Res<'w, EditorPluginRegistry>,
     pub assets: Res<'w, AssetDatabase>,
     pub history: ResMut<'w, TransformHistory>,
@@ -45,11 +52,24 @@ pub struct EditorUiParams<'w, 's> {
 }
 
 pub fn install_editor_ui(app: &mut App) {
-    app.add_systems(bevy_egui::EguiPrimaryContextPass, editor_ui_system);
+    app.init_resource::<WelcomeState>()
+        .add_systems(bevy_egui::EguiPrimaryContextPass, editor_ui_system);
 }
 
 fn editor_ui_system(mut mut_params: EditorUiParams) -> Result {
     let ctx = mut_params.contexts.ctx_mut()?;
+    theme::apply_material_theme(ctx);
+
+    if mut_params.welcome.visible {
+        let welcome = &mut *mut_params.welcome;
+        let project = &mut *mut_params.project;
+        let state = &mut *mut_params.state;
+        egui::CentralPanel::default().show(ctx, |ui| {
+            show_welcome(ui, welcome, project, state);
+        });
+        return Ok(());
+    }
+
     let entities: Vec<(Entity, String)> = mut_params
         .names
         .iter()
@@ -140,7 +160,21 @@ fn editor_ui_system(mut mut_params: EditorUiParams) -> Result {
     );
 
     egui::CentralPanel::default().show(&mut root_ui, |ui| {
-        show_dock_area(ui, &mut mut_params.dock, &mut viewer);
+        show_app_bar(
+            ui,
+            &mut mut_params.project,
+            &mut mut_params.state,
+            &mut mut_params.welcome,
+            &mut mut_params.command_bus,
+        );
+        ui.add_space(6.0);
+        ui.horizontal(|ui| {
+            show_navigation_rail(ui, &mut mut_params.welcome);
+            ui.separator();
+            ui.allocate_ui(ui.available_size(), |content| {
+                show_dock_area(content, &mut mut_params.dock, &mut viewer);
+            });
+        });
     });
 
     let actions = UiActions::from(&viewer);
