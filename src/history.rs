@@ -39,29 +39,33 @@ impl TransformHistory {
     }
 
     pub fn undo(&mut self, transforms: &mut Query<&mut Transform>) {
-        if let Some(snapshot) = self.undo.pop_back() {
-            if let Ok(mut current) = transforms.get_mut(snapshot.entity) {
-                let current_snapshot = TransformSnapshot {
-                    entity: snapshot.entity,
-                    transform: *current,
-                };
-                *current = snapshot.transform;
-                self.redo.push_back(current_snapshot);
-            }
-        }
+        let Some(snapshot) = self.undo.pop_back() else {
+            return;
+        };
+        let Ok(mut current) = transforms.get_mut(snapshot.entity) else {
+            return;
+        };
+        let current_snapshot = TransformSnapshot {
+            entity: snapshot.entity,
+            transform: *current,
+        };
+        *current = snapshot.transform;
+        self.redo.push_back(current_snapshot);
     }
 
     pub fn redo(&mut self, transforms: &mut Query<&mut Transform>) {
-        if let Some(snapshot) = self.redo.pop_back() {
-            if let Ok(mut current) = transforms.get_mut(snapshot.entity) {
-                let current_snapshot = TransformSnapshot {
-                    entity: snapshot.entity,
-                    transform: *current,
-                };
-                *current = snapshot.transform;
-                self.undo.push_back(current_snapshot);
-            }
-        }
+        let Some(snapshot) = self.redo.pop_back() else {
+            return;
+        };
+        let Ok(mut current) = transforms.get_mut(snapshot.entity) else {
+            return;
+        };
+        let current_snapshot = TransformSnapshot {
+            entity: snapshot.entity,
+            transform: *current,
+        };
+        *current = snapshot.transform;
+        self.undo.push_back(current_snapshot);
     }
 
     pub fn clear(&mut self) {
