@@ -1,4 +1,4 @@
-//! Editor workspace UI. Rendering, authoring actions, asset scanning and persistence
+//! Editor workspace UI. Rendering, authoring actions, asset discovery and persistence
 //! are isolated into focused submodules.
 
 use bevy::ecs::system::SystemParam;
@@ -6,7 +6,9 @@ use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
 
 use crate::{
-    command::EditorCommandRegistry,
+    assets::AssetDatabase,
+    command::{EditorCommandRegistry, EditorCommandBus},
+    command_executor::CommandExecutionState,
     docking::{show_dock_area, DockViewer, EditorDockState, TransformEdit},
     editor::{EditorPluginRegistry, EditorUiState},
     history::TransformHistory,
@@ -20,7 +22,6 @@ mod assets;
 mod persistence;
 
 use actions::{apply_entity_actions, UiActions};
-use assets::scan_assets;
 use persistence::save_editor_project;
 
 #[derive(SystemParam)]
@@ -31,7 +32,10 @@ pub struct EditorUiParams<'w, 's> {
     pub project: ResMut<'w, ProjectState>,
     pub selection: ResMut<'w, SelectionState>,
     pub registry: Res<'w, EditorCommandRegistry>,
+    pub bus: ResMut<'w, EditorCommandBus>,
+    pub execution: Res<'w, CommandExecutionState>,
     pub plugins: Res<'w, EditorPluginRegistry>,
+    pub assets: Res<'w, AssetDatabase>,
     pub history: ResMut<'w, TransformHistory>,
     pub transforms: Query<'w, 's, &'static Transform, With<EditorEntity>>,
     pub names: Query<'w, 's, (Entity, Option<&'static Name>), With<EditorEntity>>,
@@ -68,7 +72,12 @@ fn editor_ui_system(mut params: EditorUiParams) -> Result {
         })
     });
 
-    let assets = scan_assets(&params.project.root, 5, 1000);
+    let asset_paths: Vec<String> = params
+        .assets
+        .entries
+        .iter()
+        .map(|entry| entry.path.display().to_string())
+        .collect();
     let plugin_names: Vec<String> = params
         .plugins
         .iter()
@@ -81,7 +90,7 @@ fn editor_ui_system(mut params: EditorUiParams) -> Result {
         ui_state: &mut params.state,
         entities: &entities,
         selected_transform,
-        assets: &assets,
+        assets: &asset_paths,
         plugin_names: &plugin_names,
         command_count: params.registry.iter().count(),
         transform_edit: None,
@@ -103,6 +112,10 @@ fn editor_ui_system(mut params: EditorUiParams) -> Result {
     egui::CentralPanel::default().show(&mut root_ui, |ui| {
         show_dock_area(ui, &mut params.dock, &mut viewer);
     });
+
+    if params.execution.last_error.is_none() && params.execution.last == Some(crate::EditorCommandId("assets.refresh")) {
+        params.bus.emit(crate::EditorCommandId("assets.refresh"));
+    }
 
     let actions = UiActions::from(&viewer);
     apply_entity_actions(
