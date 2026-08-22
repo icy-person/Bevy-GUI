@@ -1,9 +1,8 @@
 //! 3D editor viewport subsystem.
 
-use bevy::prelude::*;
 use bevy::camera_controller::free_camera::FreeCameraPlugin;
 use bevy::dev_tools::infinite_grid::InfiniteGridPlugin;
-use bevy::picking::prelude::DefaultPickingPlugins;
+use bevy::prelude::*;
 
 mod components;
 mod gizmo;
@@ -15,12 +14,11 @@ pub use components::{EditorEntity, GizmoHistoryTracker, InitialSelected};
 pub use input::editor_input;
 
 use crate::history::TransformHistory;
-use crate::selection::SelectionState;
 use crate::runtime::PlaySession;
+use crate::selection::SelectionState;
 
 pub fn install_viewport(app: &mut App) {
     app.add_plugins((
-        DefaultPickingPlugins,
         TransformGizmoPlugin,
         FreeCameraPlugin,
         InfiniteGridPlugin,
