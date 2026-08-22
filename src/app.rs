@@ -42,6 +42,7 @@ fn register_default_commands(mut registry: ResMut<EditorCommandRegistry>) {
         ("project.play", "Play", Some("F6")),
         ("project.pause", "Pause", Some("F7")),
         ("project.stop", "Stop", Some("F8")),
+        ("project.export", "Export Project", Some("Ctrl+Shift+B")),
         ("edit.undo", "Undo", Some("Ctrl+Z")),
         ("edit.redo", "Redo", Some("Ctrl+Y")),
         ("scene.save", "Save Scene", Some("Ctrl+Shift+S")),
