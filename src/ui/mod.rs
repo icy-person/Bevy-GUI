@@ -136,6 +136,7 @@ fn editor_ui_system(mut mut_params: EditorUiParams) -> Result {
     });
 
     let actions = UiActions::from(&viewer);
+    let mut parents = mut_params.parent_queries.p1();
     apply_entity_actions(
         actions,
         &mut mut_params.commands,
@@ -143,8 +144,9 @@ fn editor_ui_system(mut mut_params: EditorUiParams) -> Result {
         &mut mut_params.project,
         &mut mut_params.history,
         &mut_params.transforms,
-        &mut mut_params.parent_queries.p1(),
+        &mut parents,
     );
+    drop(parents);
 
     if actions.save_requested {
         let parents = mut_params.parent_queries.p0();
