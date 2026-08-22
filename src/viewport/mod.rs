@@ -10,14 +10,14 @@ mod input;
 mod runtime;
 mod scene;
 
-pub use components::{Editor3dCamera, EditorEntity, GizmoHistoryTracker, InitialSelected};
+pub use components::{Editor3dCamera, Editor3dGrid, EditorEntity, GizmoHistoryTracker, InitialSelected};
 pub use input::editor_input;
 
 use crate::editor::{EditorUiState, ViewportMode};
 use crate::history::TransformHistory;
-use crate::project::ProjectState;
 use crate::runtime::PlaySession;
 use crate::selection::SelectionState;
+use crate::settings::EditorSettingsState;
 
 pub fn install_viewport(app: &mut App) {
     app.add_plugins((TransformGizmoPlugin, FreeCameraPlugin, InfiniteGridPlugin))
@@ -42,11 +42,17 @@ pub fn install_viewport(app: &mut App) {
 
 fn sync_3d_visibility(
     editor: Res<EditorUiState>,
-    mut query: Query<&mut Visibility, With<Editor3dCamera>>,
+    settings: Res<EditorSettingsState>,
+    mut camera_query: Query<&mut Visibility, With<Editor3dCamera>>,
+    mut grid_query: Query<&mut Visibility, (With<Editor3dGrid>, Without<Editor3dCamera>)>,
 ) {
     let visible = editor.viewport_mode == ViewportMode::ThreeD;
-    for mut visibility in &mut query {
+    for mut visibility in &mut camera_query {
         *visibility = if visible { Visibility::Inherited } else { Visibility::Hidden };
+    }
+    let grid_visible = visible && settings.settings.viewport.grid_3d;
+    for mut visibility in &mut grid_query {
+        *visibility = if grid_visible { Visibility::Inherited } else { Visibility::Hidden };
     }
 }
 
