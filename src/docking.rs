@@ -1,8 +1,12 @@
 use bevy::prelude::*;
-use egui_dock::{DockArea, DockState, TabViewer};
 use bevy_egui::egui;
+use egui_dock::{DockArea, DockState, TabViewer};
 
-use crate::{editor::EditorUiState, project::{EditorMode, ProjectState}, selection::SelectionState};
+use crate::{
+    editor::EditorUiState,
+    project::{EditorMode, ProjectState},
+    selection::SelectionState,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum EditorTab {
@@ -34,20 +38,14 @@ pub struct EditorDockState {
 
 impl Default for EditorDockState {
     fn default() -> Self {
-        let mut state = DockState::new(vec![
-            EditorTab::Viewport,
-            EditorTab::Hierarchy,
-            EditorTab::Inspector,
-            EditorTab::Assets,
-            EditorTab::Console,
-            EditorTab::Plugins,
-        ]);
+        let mut state = DockState::new(vec![EditorTab::Viewport]);
         let tree = state.main_surface_mut();
         let root = tree.root_node();
-        let [_old, left] = tree.split_left(root, 0.19, vec![EditorTab::Hierarchy]);
+        let [_old, left] = tree.split_left(root, 0.20, vec![EditorTab::Hierarchy]);
         let [_old, right] = tree.split_right(root, 0.20, vec![EditorTab::Inspector]);
-        let [_old, bottom] = tree.split_below(root, 0.74, vec![EditorTab::Console]);
-        let _ = (left, right, bottom);
+        tree.split_below(root, 0.74, vec![EditorTab::Console]);
+        tree.split_below(left, 0.65, vec![EditorTab::Assets]);
+        tree.split_below(right, 0.65, vec![EditorTab::Plugins]);
         Self { state }
     }
 }
@@ -87,26 +85,34 @@ impl TabViewer for DockViewer<'_> {
                 ui.horizontal(|ui| {
                     ui.strong("Scene");
                     ui.separator();
-                    if ui.selectable_label(self.project.mode == EditorMode::Edit, "Edit").clicked() {
+                    if ui
+                        .selectable_label(self.project.mode == EditorMode::Edit, "Edit")
+                        .clicked()
+                    {
                         self.project.mode = EditorMode::Edit;
                     }
-                    if ui.selectable_label(self.project.mode == EditorMode::Play, "Play").clicked() {
+                    if ui
+                        .selectable_label(self.project.mode == EditorMode::Play, "Play")
+                        .clicked()
+                    {
                         self.project.mode = EditorMode::Play;
                     }
-                    if ui.selectable_label(self.project.mode == EditorMode::Paused, "Pause").clicked() {
+                    if ui
+                        .selectable_label(self.project.mode == EditorMode::Paused, "Pause")
+                        .clicked()
+                    {
                         self.project.mode = EditorMode::Paused;
                     }
                     ui.separator();
-                    ui.label("W Translate   E Rotate   R Scale   |   Q/Esc focus");
+                    ui.label("W Translate   E Rotate   R Scale   X World/Local");
                 });
                 ui.separator();
-                ui.add_space(4.0);
                 ui.centered_and_justified(|ui| {
                     ui.vertical_centered(|ui| {
                         ui.heading("3D Viewport");
-                        ui.label("The live Bevy camera renders behind this transparent dock surface.");
-                        ui.label("Click entities in the scene or use the Hierarchy tab to select them.");
-                        ui.label("Drag the built-in Bevy 0.19 transform gizmo to move, rotate or scale.");
+                        ui.label("The Bevy 3D scene remains live beneath the editor UI.");
+                        ui.label("Click a mesh or select it from Hierarchy to activate the gizmo.");
+                        ui.label("Drag the X/Y/Z handles to transform the current selection.");
                     });
                 });
             }
@@ -153,7 +159,7 @@ impl TabViewer for DockViewer<'_> {
                     }
                     ui.separator();
                     ui.collapsing("Components", |ui| {
-                        ui.label("Bevy reflection/component editing is the next inspector layer.");
+                        ui.label("Reflection-driven component editing is the next inspector layer.");
                     });
                 } else {
                     ui.weak("Nothing selected");
@@ -191,15 +197,19 @@ impl TabViewer for DockViewer<'_> {
     }
 
     fn clear_background(&self, tab: &Self::Tab) -> bool {
-        !matches!(tab, EditorTab::Viewport)
+        !matches!(tab, Self::Tab::Viewport)
     }
 
     fn scroll_bars(&self, tab: &Self::Tab) -> [bool; 2] {
-        if matches!(tab, EditorTab::Viewport) { [false, false] } else { [true, true] }
+        if matches!(tab, Self::Tab::Viewport) {
+            [false, false]
+        } else {
+            [true, true]
+        }
     }
 
     fn is_closeable(&self, tab: &Self::Tab) -> bool {
-        !matches!(tab, EditorTab::Viewport)
+        !matches!(tab, Self::Tab::Viewport)
     }
 }
 
