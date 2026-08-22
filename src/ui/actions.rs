@@ -121,7 +121,7 @@ pub fn apply_entity_actions(
     if let Some(edit) = actions.transform_edit
         && let Ok(current) = transforms.get(edit.entity)
     {
-        apply_transform_edit(history, commands, project, *edit, *current);
+        apply_transform_edit(history, commands, project, edit, *current);
     }
 }
 
