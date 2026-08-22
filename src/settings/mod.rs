@@ -5,6 +5,9 @@ use serde::{Deserialize, Serialize};
 use std::{fs, io, path::{Path, PathBuf}};
 use thiserror::Error;
 
+use crate::editor::{EditorUiState, ViewportMode};
+use crate::project::ProjectState;
+
 const SETTINGS_VERSION: u32 = 1;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -207,9 +210,15 @@ pub fn install_settings(app: &mut App) {
 fn load_settings_on_startup(
     project: Res<ProjectState>,
     mut state: ResMut<EditorSettingsState>,
+    mut editor: ResMut<EditorUiState>,
 ) {
     match load_settings(&project.root) {
         Ok(settings) => {
+            editor.viewport_mode = if settings.editor.start_in_2d {
+                ViewportMode::TwoD
+            } else {
+                ViewportMode::ThreeD
+            };
             state.settings = settings;
             state.path = Some(settings_path(&project.root));
             state.last_error = None;
