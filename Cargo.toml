@@ -4,10 +4,12 @@ version = "0.1.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 description = "Plugin-first editor shell for the Bevy game engine"
-rust-version = "1.88"
+rust-version = "1.95"
 
 [dependencies]
-bevy = { version = "0.19", features = ["bevy_dev_tools"] }
+# The editor is a native 3D/UI application. Disable Bevy's broad defaults so
+# optional subsystems (especially audio) do not leak into the editor kernel.
+bevy = { version = "0.19", default-features = false, features = ["3d", "ui", "bevy_dev_tools"] }
 bevy_egui = "0.41"
 egui = "0.36"
 serde = { version = "1", features = ["derive"] }
@@ -17,8 +19,10 @@ tracing = "0.1"
 
 [features]
 default = ["native-editor"]
+# Native editor feature set. Keep this as the single place where the editor's
+# Bevy capabilities are enabled; future optional subsystems can be added as
+# separate features without changing the core dependency declaration.
 native-editor = []
-headless = []
 
 [profile.dev]
 opt-level = 1
