@@ -1,12 +1,13 @@
 use bevy::prelude::*;
 
 use crate::{
-    docking::{DockViewer, TransformEdit},
     history::{TransformHistory, TransformSnapshot},
     project::ProjectState,
+    scene_model::EditorParent,
     selection::SelectionState,
-    viewport::EditorEntity,
 };
+use crate::docking::{DockViewer, TransformEdit};
+use crate::viewport::EditorEntity;
 
 #[derive(Clone, Copy)]
 pub struct UiActions {
@@ -15,6 +16,8 @@ pub struct UiActions {
     pub duplicate_entity: Option<Entity>,
     pub save_requested: bool,
     pub transform_edit: Option<TransformEdit>,
+    pub parent_selected: bool,
+    pub unparent_selected: bool,
 }
 
 impl UiActions {
@@ -25,6 +28,8 @@ impl UiActions {
             duplicate_entity: viewer.duplicate_entity,
             save_requested: viewer.save_requested,
             transform_edit: viewer.transform_edit,
+            parent_selected: viewer.parent_selected,
+            unparent_selected: viewer.unparent_selected,
         }
     }
 }
@@ -40,6 +45,7 @@ pub fn apply_entity_actions(
     project: &mut ProjectState,
     history: &mut TransformHistory,
     transforms: &Query<&Transform, With<EditorEntity>>,
+    parents: &mut Query<&mut EditorParent, With<EditorEntity>>,
 ) {
     if actions.create_entity {
         let entity = commands
@@ -48,6 +54,7 @@ pub fn apply_entity_actions(
                 Name::new("Entity"),
                 Pickable::default(),
                 EditorEntity,
+                EditorParent(None),
             ))
             .id();
         commands.entity(entity).observe(select_clicked_entity);
@@ -64,6 +71,7 @@ pub fn apply_entity_actions(
                 Name::new("Duplicate"),
                 Pickable::default(),
                 EditorEntity,
+                EditorParent(None),
             ))
             .id();
         commands.entity(new_entity).observe(select_clicked_entity);
@@ -75,6 +83,29 @@ pub fn apply_entity_actions(
         commands.entity(entity).despawn();
         selection.entities.retain(|current| *current != entity);
         selection.focused = selection.entities.last().copied();
+        project.dirty = true;
+    }
+
+    if actions.parent_selected && selection.entities.len() >= 2
+        && let Some(parent) = selection.primary()
+    {
+        let selected = selection.entities.clone();
+        for entity in selected {
+            if entity != parent
+                && let Ok(mut relation) = parents.get_mut(entity)
+            {
+                relation.0 = Some(parent);
+            }
+        }
+        project.dirty = true;
+    }
+
+    if actions.unparent_selected {
+        for entity in selection.entities.iter().copied() {
+            if let Ok(mut relation) = parents.get_mut(entity) {
+                relation.0 = None;
+            }
+        }
         project.dirty = true;
     }
 
