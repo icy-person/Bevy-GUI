@@ -1,0 +1,68 @@
+use bevy::prelude::*;
+
+use crate::{
+    command::{EditorCommandBus, EditorCommandId},
+    history::TransformHistory,
+    project::{EditorMode, ProjectState},
+};
+
+pub fn editor_input(
+    keys: Res<ButtonInput<KeyCode>>,
+    mut project: ResMut<ProjectState>,
+    mut gizmo: ResMut<TransformGizmoSettings>,
+    mut history: ResMut<TransformHistory>,
+    mut transforms: Query<&mut Transform>,
+    mut bus: ResMut<EditorCommandBus>,
+) {
+    if keys.just_pressed(KeyCode::KeyW) {
+        gizmo.mode = TransformGizmoMode::Translate;
+    }
+    if keys.just_pressed(KeyCode::KeyE) {
+        gizmo.mode = TransformGizmoMode::Rotate;
+    }
+    if keys.just_pressed(KeyCode::KeyR) {
+        gizmo.mode = TransformGizmoMode::Scale;
+    }
+    if keys.just_pressed(KeyCode::KeyX) {
+        gizmo.space = match gizmo.space {
+            TransformGizmoSpace::World => TransformGizmoSpace::Local,
+            TransformGizmoSpace::Local => TransformGizmoSpace::World,
+        };
+    }
+
+    let ctrl = keys.pressed(KeyCode::ControlLeft) || keys.pressed(KeyCode::ControlRight);
+    if ctrl && keys.just_pressed(KeyCode::KeyZ) {
+        history.undo(&mut transforms);
+        project.dirty = true;
+        bus.emit(EditorCommandId("edit.undo"));
+    }
+    if ctrl && keys.just_pressed(KeyCode::KeyY) {
+        history.redo(&mut transforms);
+        project.dirty = true;
+        bus.emit(EditorCommandId("edit.redo"));
+    }
+    if ctrl && keys.just_pressed(KeyCode::KeyS) {
+        bus.emit(EditorCommandId("project.save"));
+    }
+    if ctrl && keys.just_pressed(KeyCode::KeyD) {
+        bus.emit(EditorCommandId("scene.duplicate"));
+    }
+    if ctrl && keys.just_pressed(KeyCode::KeyA) {
+        bus.emit(EditorCommandId("scene.new_entity"));
+    }
+    if keys.just_pressed(KeyCode::Delete) {
+        bus.emit(EditorCommandId("scene.delete"));
+    }
+    if keys.just_pressed(KeyCode::F6) {
+        project.mode = EditorMode::Play;
+        bus.emit(EditorCommandId("project.play"));
+    }
+    if keys.just_pressed(KeyCode::F7) {
+        project.mode = EditorMode::Paused;
+        bus.emit(EditorCommandId("project.pause"));
+    }
+    if keys.just_pressed(KeyCode::F8) {
+        project.mode = EditorMode::Edit;
+        bus.emit(EditorCommandId("project.stop"));
+    }
+}
