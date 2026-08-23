@@ -48,11 +48,17 @@ pub fn execute_editor_commands(
                 let profile = default_profile(&project);
                 match export_project(&project, &profile) {
                     Ok(report) => {
+                        let executable = report
+                            .executable
+                            .as_ref()
+                            .map(|path| format!("; executable {}", path.display()))
+                            .unwrap_or_default();
                         state.last_message = Some(format!(
-                            "Exported {} files ({} bytes) to {}",
+                            "Built {} files ({} bytes) to {}{}",
                             report.files,
                             report.bytes,
-                            report.output.display()
+                            report.output.display(),
+                            executable
                         ));
                     }
                     Err(error) => state.last_error = Some(error.to_string()),
@@ -67,7 +73,8 @@ pub fn execute_editor_commands(
                     .spawn((
                         Transform::default(),
                         Name::new("Entity"),
-                        crate::viewport::EditorEntity,
+                        Visibility::Inherited,
+                        EditorEntity,
                         crate::scene_model::EditorParent(None),
                         Pickable::default(),
                     ))
@@ -84,6 +91,7 @@ pub fn execute_editor_commands(
                                 .spawn((
                                     *transform,
                                     Name::new("Duplicate"),
+                                    Visibility::Inherited,
                                     EditorEntity,
                                     crate::scene_model::EditorParent(None),
                                     Pickable::default(),
