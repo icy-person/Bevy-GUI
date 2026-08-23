@@ -1,34 +1,32 @@
 # Bevy-GUI
 
-Bevy-GUI is a plugin-first game-editor platform built on Bevy 0.19. The codebase is organized as independent editor subsystems rather than a single UI file, with the long-term target of a Godot-class workflow.
+Bevy-GUI is a plugin-first game-editor platform built on Bevy 0.19. The editor is organized as independent subsystems so project management, scene authoring, UI, runtime control and build/export can evolve without a monolithic editor file.
 
-## Implemented editor systems
+## Real editor capabilities
 
-- Material 3-inspired editor shell with Welcome/Project entry, app bar and navigation rail
-- 3D viewport with FreeCamera, InfiniteGrid, mesh picking and Transform Gizmo
+- Material 3-inspired Welcome / Project Manager
+- New Project creates a persistent runnable Bevy project on disk
+- Generated project contains `project.godot-rs.json`, `Cargo.toml`, `src/main.rs`, `scenes/`, `assets/` and `.bevy-gui/`
+- Open Project loads the real manifest and project root
+- 3D viewport with FreeCamera, InfiniteGrid, picking and Transform Gizmo
 - 3D Translate / Rotate / Scale and World / Local switching
-- Configurable 3D grid visibility and transform snapping
-- 2D viewport with Camera2d, orthographic zoom, middle-mouse pan and configurable grid
-- One-click and keyboard switching between 2D and 3D (`1` / `2`)
-- Multi-selection and tree-style scene hierarchy
+- 2D viewport with Camera2d, orthographic pan/zoom and grid
+- 2D / 3D switching with `1` / `2`
+- Multi-selection and hierarchy tree
 - Create / Duplicate / Delete entity authoring
 - Parent / Unparent authoring
-- Transform inspector with undo/redo history
-- Versioned scene JSON with stable IDs and parent relationships
-- Project manifest loading before editor startup
-- Main-scene loading on editor startup
-- Play / Pause / Stop runtime snapshots
-- Command Bus and command executor with scene authoring commands
-- Asset database with classification, file sizes and modification metadata
-- Docking workspace with Viewport, Hierarchy, Inspector, Assets, Console, Profiler, Plugins and Settings
-- Live Profiler panel with FPS, frame time, min/max frame timing and sample count
-- Persistent settings with versioned JSON storage
-- Settings categories for Appearance, Editor, Viewport/Grid, Input, Graphics and Project
-- Runtime-configurable camera speed, zoom/pan behavior, grid, snapping and Material appearance
-- Project export pipeline for manifest, scene and assets
-- Plugin and panel registries
-- Focused subsystem file layout
-- Manual Linux x86_64 release/debug build artifacts
+- Live Inspector editing for Transform, Name and Visibility
+- Versioned scene JSON with stable IDs, parent relationships and visibility state
+- Main Scene persistence across restart
+- Play / Pause / Stop runtime mode
+- Command Bus and command executor
+- Searchable Asset Browser with type classification, size, generation and selection
+- Persistent settings with Material Light/Dark styling, UI scale, keymap, viewport, graphics and project controls
+- Docking workspace for Viewport, Hierarchy, Inspector, Assets, Console, Profiler, Plugins and Settings
+- Live profiler with FPS and frame-time statistics
+- Plugin and panel registries with live service diagnostics
+- Export pipeline capable of invoking `cargo build --release` and packaging the runtime executable, scene and assets
+- Manual Linux x86_64 release/debug build workflow
 
 ## Source layout
 
@@ -105,35 +103,16 @@ Delete             Delete selected entity
 F6 / F7 / F8       Play / Pause / Stop
 F5                 Refresh assets
 Ctrl+S             Save project
-Ctrl+Shift+B       Export project
+Ctrl+Shift+B       Build/export project
 Ctrl+O             Open scene command
 Ctrl+Shift+S       Save scene command
 ```
 
-## Settings persistence
+## Project persistence
 
-Editor settings are stored at:
+New projects contain a real Bevy 0.19 Cargo game template. The editor writes scene data to `scenes/main.scene.json` and settings to `.bevy-gui/editor-settings.json`.
 
-```text
-.bevy-gui/editor-settings.json
-```
-
-The document is versioned and contains:
-
-```text
-Appearance
-Editor Behavior
-Viewport & Grid
-Input
-Graphics
-Project
-```
-
-## Design rules
-
-The editor core does not own game-specific components. Cross-subsystem communication goes through resources, commands, registries, selection state and scene/project documents. Large systems are split into focused files so new features do not require rewriting `app.rs` or a monolithic UI module.
-
-## Build checks
+## Validation
 
 ```bash
 cargo check --all-targets --all-features
@@ -142,10 +121,4 @@ cargo clippy --all-targets --all-features -- -D warnings
 cargo test --all-targets --all-features
 ```
 
-## Build an editor binary
-
-The `build` GitHub Actions workflow is manual-only. Run **Actions → build → Run workflow**, choose `release` or `debug`, and download the resulting Linux x86_64 artifact from that workflow.
-
-For local Linux builds, see [`docs/build-and-test.md`](docs/build-and-test.md).
-
-GitHub Actions is intentionally manual-only (`workflow_dispatch`) so validation and binary builds run only when requested.
+GitHub Actions is intentionally manual-only (`workflow_dispatch`). Use **Actions → build → Run workflow → release** when you want a new editor binary.
