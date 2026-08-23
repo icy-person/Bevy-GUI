@@ -1,16 +1,16 @@
 use bevy::prelude::*;
 use std::collections::VecDeque;
 
-/// A single entity transform before/after an editor mutation.
+/// A single entity transform captured before or after an editor mutation.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct TransformSnapshot {
     pub entity: Entity,
     pub transform: Transform,
 }
 
-/// A named editor transaction containing all affected entities. Grouping
-/// multiple entities into one command makes multi-selection transforms undo as
-/// one operation rather than one operation per entity.
+/// One atomic editor transaction. Multi-selection edits should be represented
+/// by one transaction so Undo/Redo matches what the user perceives as one
+/// operation.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TransformTransaction {
     pub label: String,
@@ -30,13 +30,17 @@ impl TransformTransaction {
     pub fn affected_entities(&self) -> impl Iterator<Item = Entity> + '_ {
         self.after.iter().map(|snapshot| snapshot.entity)
     }
+
+    pub fn changed_count(&self) -> usize {
+        self.before
+            .iter()
+            .zip(self.after.iter())
+            .filter(|(before, after)| before.transform != after.transform || before.entity != after.entity)
+            .count()
+    }
 }
 
-/// Bounded undo/redo history for transform authoring.
-///
-/// The public legacy `push/undo/redo` API remains available for the simple
-/// single-entity path, while `push_transaction/undo_transaction` provides the
-/// production path for grouped editor operations.
+/// Bounded editor history for transform authoring.
 #[derive(Resource)]
 pub struct TransformHistory {
     undo: VecDeque<TransformTransaction>,
@@ -61,21 +65,11 @@ impl TransformHistory {
         }
     }
 
+    /// Backward-compatible single-snapshot insertion. This is intended for
+    /// callers that have already captured the previous transform elsewhere;
+    /// use `push_transaction` for editor code where both sides are known.
     pub fn push(&mut self, snapshot: TransformSnapshot) {
-        let current = self.current_transform(snapshot.entity);
-        if let Some(current) = current {
-            self.push_transaction(TransformTransaction::new(
-                "Transform",
-                vec![TransformSnapshot { entity: snapshot.entity, transform: current }],
-                vec![snapshot],
-            ));
-        } else {
-            self.push_transaction(TransformTransaction::new(
-                "Transform",
-                Vec::new(),
-                vec![snapshot],
-            ));
-        }
+        self.push_transaction(TransformTransaction::new("Transform", vec![snapshot], vec![snapshot]));
     }
 
     pub fn push_transaction(&mut self, transaction: TransformTransaction) {
@@ -90,67 +84,43 @@ impl TransformHistory {
         }
     }
 
-    /// Records a complete before/after capture for the supplied entities.
-    pub fn capture_transaction<I, F>(
-        &mut self,
-        label: impl Into<String>,
-        before: I,
-        after: I,
-    ) where
-        I: IntoIterator<Item = TransformSnapshot>,
-        F: Fn(Entity) -> Option<Transform>,
-    {
-        let _ = std::marker::PhantomData::<F>;
-        self.push_transaction(TransformTransaction::new(
-            label,
-            before.into_iter().collect(),
-            after.into_iter().collect(),
-        ));
-    }
-
-    fn current_transform(&self, _entity: Entity) -> Option<Transform> {
-        // The legacy `push` API has no World/Query access and therefore cannot
-        // know the current value by itself. Callers that need grouped history
-        // should use `push_transaction` with explicit before/after snapshots.
-        None
-    }
-
     pub fn undo(&mut self, transforms: &mut Query<&mut Transform>) {
         let Some(transaction) = self.undo.pop_back() else { return; };
-        let mut applied_after = Vec::with_capacity(transaction.after.len());
+        let mut current_after = Vec::with_capacity(transaction.after.len());
         for snapshot in &transaction.after {
             if let Ok(current) = transforms.get(snapshot.entity) {
-                applied_after.push(TransformSnapshot { entity: snapshot.entity, transform: *current });
+                current_after.push(TransformSnapshot { entity: snapshot.entity, transform: *current });
             }
         }
         apply_snapshots(transforms, &transaction.before);
-        self.redo.push_back(TransformTransaction::new(transaction.label, transaction.before, applied_after));
+        self.redo.push_back(TransformTransaction::new(
+            transaction.label,
+            transaction.before,
+            current_after,
+        ));
     }
 
     pub fn redo(&mut self, transforms: &mut Query<&mut Transform>) {
         let Some(transaction) = self.redo.pop_back() else { return; };
-        let mut applied_before = Vec::with_capacity(transaction.after.len());
+        let mut current_before = Vec::with_capacity(transaction.before.len());
         for snapshot in &transaction.before {
             if let Ok(current) = transforms.get(snapshot.entity) {
-                applied_before.push(TransformSnapshot { entity: snapshot.entity, transform: *current });
+                current_before.push(TransformSnapshot { entity: snapshot.entity, transform: *current });
             }
         }
         apply_snapshots(transforms, &transaction.after);
-        self.undo.push_back(TransformTransaction::new(transaction.label, applied_before, transaction.after));
+        self.undo.push_back(TransformTransaction::new(
+            transaction.label,
+            current_before,
+            transaction.after,
+        ));
     }
 
     pub fn can_undo(&self) -> bool { !self.undo.is_empty() }
     pub fn can_redo(&self) -> bool { !self.redo.is_empty() }
-
     pub fn peek_undo_label(&self) -> Option<&str> { self.undo.back().map(|transaction| transaction.label.as_str()) }
     pub fn peek_redo_label(&self) -> Option<&str> { self.redo.back().map(|transaction| transaction.label.as_str()) }
-
-    pub fn clear(&mut self) {
-        self.undo.clear();
-        self.redo.clear();
-        self.last_label = None;
-    }
-
+    pub fn clear(&mut self) { self.undo.clear(); self.redo.clear(); self.last_label = None; }
     pub fn undo_len(&self) -> usize { self.undo.len() }
     pub fn redo_len(&self) -> usize { self.redo.len() }
     pub fn capacity(&self) -> usize { self.capacity }
@@ -162,7 +132,9 @@ impl TransformHistory {
         while self.redo.len() > self.capacity { self.redo.pop_front(); }
     }
 
-    pub fn transactions(&self) -> impl Iterator<Item = &TransformTransaction> { self.undo.iter() }
+    pub fn transactions(&self) -> impl Iterator<Item = &TransformTransaction> {
+        self.undo.iter()
+    }
 }
 
 fn apply_snapshots(transforms: &mut Query<&mut Transform>, snapshots: &[TransformSnapshot]) {
@@ -178,26 +150,43 @@ mod tests {
     use super::*;
 
     fn snapshot(entity: u32, x: f32) -> TransformSnapshot {
-        TransformSnapshot { entity: Entity::from_raw_u32(entity), transform: Transform::from_xyz(x, 0.0, 0.0) }
+        TransformSnapshot {
+            entity: Entity::from_raw_u32(entity),
+            transform: Transform::from_xyz(x, 0.0, 0.0),
+        }
     }
 
     #[test]
     fn transaction_is_grouped() {
         let mut history = TransformHistory::with_capacity(8);
-        let transaction = TransformTransaction::new(
+        history.push_transaction(TransformTransaction::new(
             "Move Selection",
             vec![snapshot(1, 0.0), snapshot(2, 0.0)],
             vec![snapshot(1, 1.0), snapshot(2, 2.0)],
-        );
-        history.push_transaction(transaction);
+        ));
         assert_eq!(history.undo_len(), 1);
         assert_eq!(history.peek_undo_label(), Some("Move Selection"));
+        assert_eq!(history.transactions().next().unwrap().changed_count(), 2);
     }
 
     #[test]
-    fn empty_transactions_are_ignored() {
+    fn identical_transactions_are_ignored() {
         let mut history = TransformHistory::default();
-        history.push_transaction(TransformTransaction::new("Empty", Vec::new(), Vec::new()));
+        let value = snapshot(1, 0.0);
+        history.push_transaction(TransformTransaction::new("Same", vec![value], vec![value]));
         assert_eq!(history.undo_len(), 0);
+    }
+
+    #[test]
+    fn capacity_is_bounded() {
+        let mut history = TransformHistory::with_capacity(2);
+        for index in 0..4 {
+            history.push_transaction(TransformTransaction::new(
+                format!("T{index}"),
+                vec![snapshot(index, 0.0)],
+                vec![snapshot(index, 1.0)],
+            ));
+        }
+        assert_eq!(history.undo_len(), 2);
     }
 }
