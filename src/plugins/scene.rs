@@ -13,20 +13,14 @@ use crate::{
 pub struct SceneEditorPlugin;
 
 impl Default for SceneEditorPlugin {
-    fn default() -> Self {
-        Self
-    }
+    fn default() -> Self { Self }
 }
 
 impl EditorPlugin for SceneEditorPlugin {
-    fn name(&self) -> &'static str {
-        "scene-editor"
-    }
+    fn name(&self) -> &'static str { "scene-editor" }
 
     fn build(&self, app: &mut App) {
-        app.world_mut()
-            .resource_mut::<EditorPluginRegistry>()
-            .register(self.name(), "1.1");
+        app.world_mut().resource_mut::<EditorPluginRegistry>().register(self.name(), "1.1");
         app.world_mut().resource_mut::<PanelRegistry>().register(
             crate::panel::PanelId("scene"),
             "Scene",
@@ -53,64 +47,30 @@ fn scene_panel(world: &mut World, ui: &mut egui::Ui) {
     ui.label(egui::RichText::new(&project.name).size(16.0).strong());
     ui.small(format!("Root: {}", project.root.display()));
 
-    egui::CollapsingHeader::new("Main Scene")
-        .default_open(true)
-        .show(ui, |ui| {
-            ui.monospace(
-                project
-                    .main_scene
-                    .as_ref()
-                    .map(|path| path.display().to_string())
-                    .unwrap_or_else(|| "<not configured>".into()),
-            );
-            ui.horizontal(|ui| {
-                if ui.button("Open").clicked() {
-                    emit(world, "scene.open");
-                }
-                if ui.button("Save").clicked() {
-                    emit(world, "scene.save");
-                }
-                if ui.button("Validate").clicked() {
-                    emit(world, "scene.validate");
-                }
-            });
+    egui::CollapsingHeader::new("Main Scene").default_open(true).show(ui, |ui| {
+        ui.monospace(project.main_scene.as_ref().map(|path| path.display().to_string()).unwrap_or_else(|| "<not configured>".into()));
+        ui.horizontal(|ui| {
+            if ui.button("Open").clicked() { emit(world, "scene.open"); }
+            if ui.button("Save").clicked() { emit(world, "scene.save"); }
+            if ui.button("Validate").clicked() { emit(world, "scene.validate"); }
         });
+    });
 
     if let Some(state) = editor {
-        egui::CollapsingHeader::new("Authoring State")
-            .default_open(true)
-            .show(ui, |ui| {
-                stat_row(ui, "Revision", state.revision.to_string());
-                stat_row(ui, "Saved", state.saved_revision.to_string());
-                stat_row(ui, "State", if state.dirty() { "Modified".to_owned() } else { "Saved".to_owned() });
-                stat_row(
-                    ui,
-                    "Loaded path",
-                    state
-                        .path
-                        .as_ref()
-                        .map(|p| p.display().to_string())
-                        .unwrap_or_else(|| "<none>".into()),
-                );
-            });
+        egui::CollapsingHeader::new("Authoring State").default_open(true).show(ui, |ui| {
+            stat_row(ui, "Revision", state.revision.to_string());
+            stat_row(ui, "Saved", state.saved_revision.to_string());
+            stat_row(ui, "State", if state.dirty() { "Modified".into() } else { "Saved".into() });
+            stat_row(ui, "Loaded path", state.path.as_ref().map(|p| p.display().to_string()).unwrap_or_else(|| "<none>".into()));
+        });
     }
 
-    egui::CollapsingHeader::new("Scene Actions")
-        .default_open(true)
-        .show(ui, |ui| {
-            if ui.button("New Entity").clicked() {
-                emit(world, "scene.new_entity");
-            }
-            if ui.button("Duplicate Selected").clicked() {
-                emit(world, "scene.duplicate");
-            }
-            if ui.button("Delete Selected").clicked() {
-                emit(world, "scene.delete");
-            }
-            if ui.button("Create Prefab").clicked() {
-                emit(world, "scene.prefab_create");
-            }
-        });
+    egui::CollapsingHeader::new("Scene Actions").default_open(true).show(ui, |ui| {
+        if ui.button("New Entity").clicked() { emit(world, "scene.new_entity"); }
+        if ui.button("Duplicate Selected").clicked() { emit(world, "scene.duplicate"); }
+        if ui.button("Delete Selected").clicked() { emit(world, "scene.delete"); }
+        if ui.button("Create Prefab").clicked() { emit(world, "scene.prefab_create"); }
+    });
 
     let report = current_validation(world);
     draw_validation(ui, report.as_ref());
@@ -124,9 +84,8 @@ fn current_validation(world: &mut World) -> Option<SceneValidationReport> {
 }
 
 fn draw_validation(ui: &mut egui::Ui, report: Option<&SceneValidationReport>) {
-    egui::CollapsingHeader::new("Validation")
-        .default_open(false)
-        .show(ui, |ui| match report {
+    egui::CollapsingHeader::new("Validation").default_open(false).show(ui, |ui| {
+        match report {
             Some(report) if report.is_valid() => {
                 ui.colored_label(egui::Color32::from_rgb(125, 220, 160), "Scene valid");
                 stat_row(ui, "Warnings", report.warnings().to_string());
@@ -144,8 +103,9 @@ fn draw_validation(ui: &mut egui::Ui, report: Option<&SceneValidationReport>) {
                     ui.colored_label(color, &issue.message);
                 }
             }
-            None => ui.label("No scene is currently available for validation."),
-        });
+            None => { ui.label("No scene is currently available for validation."); }
+        }
+    });
 }
 
 fn mode_badge(ui: &mut egui::Ui, mode: EditorMode) {
@@ -160,14 +120,10 @@ fn mode_badge(ui: &mut egui::Ui, mode: EditorMode) {
 fn stat_row(ui: &mut egui::Ui, label: &str, value: String) {
     ui.horizontal(|ui| {
         ui.weak(label);
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            ui.monospace(value);
-        });
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| { ui.monospace(value); });
     });
 }
 
 fn emit(world: &mut World, id: &'static str) {
-    if let Some(mut bus) = world.get_resource_mut::<EditorCommandBus>() {
-        bus.emit(EditorCommandId(id));
-    }
+    if let Some(mut bus) = world.get_resource_mut::<EditorCommandBus>() { bus.emit(EditorCommandId(id)); }
 }
