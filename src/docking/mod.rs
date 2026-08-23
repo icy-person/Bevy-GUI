@@ -1,7 +1,7 @@
 //! Docking workspace subsystem.
 
 mod state;
-mod viewer;
+mod viewer2;
 
 pub use state::{EditorDockState, EditorTab, TransformEdit};
-pub use viewer::{show_dock_area, DockViewer};
+pub use viewer2::{show_dock_area, DockViewer};
