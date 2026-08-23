@@ -151,7 +151,7 @@ mod tests {
 
     fn snapshot(entity: u32, x: f32) -> TransformSnapshot {
         TransformSnapshot {
-            entity: Entity::from_raw_u32(entity),
+            entity: Entity::from_index(entity),
             transform: Transform::from_xyz(x, 0.0, 0.0),
         }
     }
