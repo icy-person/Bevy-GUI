@@ -17,7 +17,7 @@ pub struct UiActions {
     pub save_requested: bool,
     pub transform_edit: Option<TransformEdit>,
     pub name_edit: Option<String>,
-    pub visibility_edit: Option<Visibility>,
+    pub visibility_edit: Option<bool>,
     pub parent_selected: bool,
     pub unparent_selected: bool,
 }
@@ -122,10 +122,14 @@ pub fn apply_entity_actions(
         project.dirty = true;
     }
 
-    if let Some(visibility) = actions.visibility_edit
+    if let Some(visible) = actions.visibility_edit
         && let Some(entity) = selection.primary()
     {
-        commands.entity(entity).insert(visibility);
+        commands.entity(entity).insert(if visible {
+            Visibility::Visible
+        } else {
+            Visibility::Hidden
+        });
         project.dirty = true;
     }
 
