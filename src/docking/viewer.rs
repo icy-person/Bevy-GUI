@@ -4,6 +4,7 @@ use egui_dock::{DockArea, TabViewer};
 
 use crate::{
     editor::{EditorUiState, ViewportMode},
+    profiler::EditorProfiler,
     project::{EditorMode, ProjectState},
     selection::SelectionState,
     settings::EditorSettingsState,
@@ -16,6 +17,7 @@ pub struct DockViewer<'a> {
     pub selection: &'a mut SelectionState,
     pub ui_state: &'a mut EditorUiState,
     pub settings: &'a mut EditorSettingsState,
+    pub profiler: &'a EditorProfiler,
     pub entities: &'a [(Entity, String)],
     pub parents: &'a [(Entity, Option<Entity>)],
     pub selected_transform: Option<TransformEdit>,
@@ -48,6 +50,7 @@ impl TabViewer for DockViewer<'_> {
             EditorTab::Inspector => self.show_inspector(ui),
             EditorTab::Assets => self.show_assets(ui),
             EditorTab::Console => self.show_console(ui),
+            EditorTab::Profiler => self.show_profiler(ui),
             EditorTab::Plugins => self.show_plugins(ui),
             EditorTab::Settings => crate::ui::settings::show_settings(ui, self.settings, self.project),
         }
@@ -240,6 +243,29 @@ impl DockViewer<'_> {
             ui.monospace(format!("[info] status: {}", self.ui_state.status));
         });
         if ui.button("Save Scene").clicked() { self.save_requested = true; }
+    }
+
+    fn show_profiler(&mut self, ui: &mut egui::Ui) {
+        Self::heading(ui, "Profiler", "Live editor frame timing");
+        ui.separator();
+        Self::section(ui, "Frame", |ui| {
+            ui.horizontal(|ui| {
+                ui.label("FPS");
+                ui.strong(format!("{:.1}", self.profiler.fps));
+                ui.separator();
+                ui.label("Frame time");
+                ui.strong(format!("{:.2} ms", self.profiler.frame_time_ms));
+            });
+            ui.add(
+                egui::ProgressBar::new((self.profiler.frame_time_ms / 33.3).clamp(0.0, 1.0))
+                    .text("16.7ms = 60 FPS target"),
+            );
+        });
+        Self::section(ui, "Window statistics", |ui| {
+            ui.label(format!("Minimum: {:.2} ms", self.profiler.min_frame_ms.min(9999.0)));
+            ui.label(format!("Maximum: {:.2} ms", self.profiler.max_frame_ms));
+            ui.label(format!("Samples: {}", self.profiler.samples));
+        });
     }
 
     fn show_plugins(&mut self, ui: &mut egui::Ui) {
