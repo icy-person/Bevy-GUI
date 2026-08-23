@@ -43,7 +43,8 @@ pub fn install_viewport(app: &mut App) {
             )
                 .chain(),
         )
-        .add_systems(PostUpdate, gizmo::record_finished_drag.after(TransformGizmoSystems));
+        .add_systems(PostUpdate, gizmo::record_finished_drag.after(TransformGizmoSystems))
+        .add_systems(PostUpdate, picking::draw_viewport_cursor.after(picking::update_viewport_cursor));
 }
 
 fn sync_3d_visibility(
