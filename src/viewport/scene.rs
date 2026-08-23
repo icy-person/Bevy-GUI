@@ -38,21 +38,22 @@ pub fn setup_editor_scene(
             let mut by_id = BTreeMap::new();
             let mut parents = Vec::new();
             for entity in document.entities {
-                let id = commands
+                let spawned = commands
                     .spawn((
                         Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
                         MeshMaterial3d(materials.add(StandardMaterial::default())),
                         entity.transform(),
+                        if entity.visible { Visibility::Visible } else { Visibility::Hidden },
                         Pickable::default(),
                         Name::new(entity.name),
                         EditorEntity,
                         EditorParent(None),
                     ))
                     .id();
-                commands.entity(id).observe(select_clicked_entity);
-                by_id.insert(entity.id, id);
-                parents.push((id, entity.parent));
-                first.get_or_insert(id);
+                commands.entity(spawned).observe(select_clicked_entity);
+                by_id.insert(entity.id, spawned);
+                parents.push((spawned, entity.parent));
+                first.get_or_insert(spawned);
             }
             for (entity, parent_id) in parents {
                 let parent = parent_id.and_then(|id| by_id.get(&id).copied());
@@ -76,6 +77,7 @@ pub fn setup_editor_scene(
             Mesh3d(meshes.add(Cuboid::new(2.0, 2.0, 2.0))),
             MeshMaterial3d(material),
             Transform::default(),
+            Visibility::Visible,
             Pickable::default(),
             Name::new("Player"),
             EditorEntity,
