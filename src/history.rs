@@ -65,9 +65,6 @@ impl TransformHistory {
         }
     }
 
-    /// Backward-compatible single-snapshot insertion. This is intended for
-    /// callers that have already captured the previous transform elsewhere;
-    /// use `push_transaction` for editor code where both sides are known.
     pub fn push(&mut self, snapshot: TransformSnapshot) {
         self.push_transaction(TransformTransaction::new("Transform", vec![snapshot], vec![snapshot]));
     }
@@ -149,20 +146,22 @@ fn apply_snapshots(transforms: &mut Query<&mut Transform>, snapshots: &[Transfor
 mod tests {
     use super::*;
 
-    fn snapshot(entity: u32, x: f32) -> TransformSnapshot {
+    fn snapshot(world: &mut World, x: f32) -> TransformSnapshot {
+        let entity = world.spawn_empty().id();
         TransformSnapshot {
-            entity: Entity::from_bits(entity as u64),
+            entity,
             transform: Transform::from_xyz(x, 0.0, 0.0),
         }
     }
 
     #[test]
     fn transaction_is_grouped() {
+        let mut world = World::new();
         let mut history = TransformHistory::with_capacity(8);
         history.push_transaction(TransformTransaction::new(
             "Move Selection",
-            vec![snapshot(1, 0.0), snapshot(2, 0.0)],
-            vec![snapshot(1, 1.0), snapshot(2, 2.0)],
+            vec![snapshot(&mut world, 0.0), snapshot(&mut world, 0.0)],
+            vec![snapshot(&mut world, 1.0), snapshot(&mut world, 2.0)],
         ));
         assert_eq!(history.undo_len(), 1);
         assert_eq!(history.peek_undo_label(), Some("Move Selection"));
@@ -171,20 +170,24 @@ mod tests {
 
     #[test]
     fn identical_transactions_are_ignored() {
+        let mut world = World::new();
+        let value = snapshot(&mut world, 0.0);
         let mut history = TransformHistory::default();
-        let value = snapshot(1, 0.0);
         history.push_transaction(TransformTransaction::new("Same", vec![value], vec![value]));
         assert_eq!(history.undo_len(), 0);
     }
 
     #[test]
     fn capacity_is_bounded() {
+        let mut world = World::new();
         let mut history = TransformHistory::with_capacity(2);
         for index in 0..4 {
+            let before = snapshot(&mut world, 0.0);
+            let after = TransformSnapshot { entity: before.entity, transform: Transform::from_xyz(1.0, 0.0, 0.0) };
             history.push_transaction(TransformTransaction::new(
                 format!("T{index}"),
-                vec![snapshot(index, 0.0)],
-                vec![snapshot(index, 1.0)],
+                vec![before],
+                vec![after],
             ));
         }
         assert_eq!(history.undo_len(), 2);
