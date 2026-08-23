@@ -63,20 +63,20 @@ fn setup_2d_world(
 
 fn sync_2d_visibility(
     editor: Res<EditorUiState>,
-    mut cameras: Query<(
+    mut cameras: Query<
         &mut Visibility,
-        Without<Editor2dEntity>,
-    ), With<Editor2dCamera>>,
-    mut entities: Query<(
+        (With<Editor2dCamera>, Without<Editor2dEntity>),
+    >,
+    mut entities: Query<
         &mut Visibility,
-        Without<Editor2dCamera>,
-    ), With<Editor2dEntity>>,
+        (With<Editor2dEntity>, Without<Editor2dCamera>),
+    >,
 ) {
     let visible = editor.viewport_mode == ViewportMode::TwoD;
-    for (mut visibility,) in &mut cameras {
+    for mut visibility in &mut cameras {
         *visibility = if visible { Visibility::Inherited } else { Visibility::Hidden };
     }
-    for (mut visibility,) in &mut entities {
+    for mut visibility in &mut entities {
         *visibility = if visible { Visibility::Inherited } else { Visibility::Hidden };
     }
 }
