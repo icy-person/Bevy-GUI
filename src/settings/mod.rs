@@ -10,7 +10,7 @@ use crate::project::ProjectState;
 
 const SETTINGS_VERSION: u32 = 1;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EditorSettings {
     pub version: u32,
     pub appearance: AppearanceSettings,
@@ -21,7 +21,7 @@ pub struct EditorSettings {
     pub project: ProjectSettings,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AppearanceSettings {
     pub theme: String,
     pub accent: [u8; 3],
@@ -29,7 +29,7 @@ pub struct AppearanceSettings {
     pub compact_controls: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EditorBehaviorSettings {
     pub autosave: bool,
     pub autosave_seconds: f32,
@@ -39,7 +39,7 @@ pub struct EditorBehaviorSettings {
     pub start_in_2d: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ViewportSettings {
     pub grid_2d: bool,
     pub grid_3d: bool,
@@ -54,7 +54,7 @@ pub struct ViewportSettings {
     pub camera_orbit_speed: f32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct InputSettings {
     pub forward: String,
     pub backward: String,
@@ -68,7 +68,7 @@ pub struct InputSettings {
     pub save: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct GraphicsSettings {
     pub backend: String,
     pub msaa_samples: u32,
@@ -77,7 +77,7 @@ pub struct GraphicsSettings {
     pub render_scale: f32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ProjectSettings {
     pub main_scene: String,
     pub assets_directory: String,
@@ -222,6 +222,7 @@ fn load_settings_on_startup(
             state.settings = settings;
             state.path = Some(settings_path(&project.root));
             state.last_error = None;
+            state.dirty = false;
         }
         Err(error) => state.last_error = Some(error.to_string()),
     }
