@@ -18,9 +18,10 @@ Bevy-GUI is a plugin-first game-editor platform built on Bevy 0.19. The codebase
 - Project manifest loading before editor startup
 - Main-scene loading on editor startup
 - Play / Pause / Stop runtime snapshots
-- Command Bus and command executor
+- Command Bus and command executor with scene authoring commands
 - Asset database with classification, file sizes and modification metadata
-- Docking workspace with Viewport, Hierarchy, Inspector, Assets, Console, Plugins and Settings
+- Docking workspace with Viewport, Hierarchy, Inspector, Assets, Console, Profiler, Plugins and Settings
+- Live Profiler panel with FPS, frame time, min/max frame timing and sample count
 - Persistent settings with versioned JSON storage
 - Settings categories for Appearance, Editor, Viewport/Grid, Input, Graphics and Project
 - Runtime-configurable camera speed, zoom/pan behavior, grid, snapping and Material appearance
@@ -41,6 +42,7 @@ src/
 ├── export.rs
 ├── history.rs
 ├── panel.rs
+├── profiler.rs
 ├── project.rs
 ├── runtime.rs
 ├── scene.rs
@@ -87,6 +89,25 @@ src/
     ├── inspector.rs
     ├── assets.rs
     └── console.rs
+```
+
+## Keyboard authoring
+
+```text
+1                  Switch to 2D
+2                  Switch to 3D
+W / E / R          Translate / Rotate / Scale gizmo
+X                  Toggle World / Local
+Ctrl+Z / Ctrl+Y    Undo / Redo
+Ctrl+A             Create entity
+Ctrl+D             Duplicate selected entity
+Delete             Delete selected entity
+F6 / F7 / F8       Play / Pause / Stop
+F5                 Refresh assets
+Ctrl+S             Save project
+Ctrl+Shift+B       Export project
+Ctrl+O             Open scene command
+Ctrl+Shift+S       Save scene command
 ```
 
 ## Settings persistence
