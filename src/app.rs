@@ -45,8 +45,16 @@ impl Plugin for BevyGuiPlugin {
         install_viewport(app);
         install_2d_viewport(app);
         install_editor_ui(app);
-        app.add_systems(Startup, register_default_commands)
+        app.add_systems(PostStartup, load_import_database)
+            .add_systems(Startup, register_default_commands)
             .add_systems(Update, execute_editor_commands);
+    }
+}
+
+fn load_import_database(project: Res<ProjectState>, mut database: ResMut<ImportDatabase>) {
+    match ImportDatabase::load(project.root.clone()) {
+        Ok(loaded) => database.clone_from(&loaded),
+        Err(_) => *database = ImportDatabase::new(project.root.clone()),
     }
 }
 

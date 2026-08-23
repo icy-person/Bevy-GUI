@@ -41,7 +41,9 @@ pub fn editor_input(
 
     let ctrl = keys.pressed(KeyCode::ControlLeft) || keys.pressed(KeyCode::ControlRight);
     let shift = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
-    if ctrl && keys.just_pressed(KeyCode::KeyZ) {
+    let alt = keys.pressed(KeyCode::AltLeft) || keys.pressed(KeyCode::AltRight);
+
+    if ctrl && keys.just_pressed(KeyCode::KeyZ) && !shift {
         history.undo(&mut transforms);
         project.dirty = true;
         bus.emit(EditorCommandId("edit.undo"));
@@ -59,19 +61,28 @@ pub fn editor_input(
     if ctrl && keys.just_pressed(KeyCode::KeyD) {
         bus.emit(EditorCommandId("scene.duplicate"));
     }
-    if ctrl && keys.just_pressed(KeyCode::KeyA) {
+    if ctrl && keys.just_pressed(KeyCode::KeyA) && shift {
         bus.emit(EditorCommandId("scene.new_entity"));
     }
-    if ctrl && keys.just_pressed(KeyCode::KeyB) {
+    if ctrl && keys.just_pressed(KeyCode::KeyB) && shift {
         bus.emit(EditorCommandId("project.export"));
     }
     if ctrl && keys.just_pressed(KeyCode::KeyO) {
         bus.emit(EditorCommandId("scene.open"));
     }
+    if ctrl && keys.just_pressed(KeyCode::KeyP) {
+        bus.emit(EditorCommandId("scene.prefab_create"));
+    }
+    if ctrl && keys.just_pressed(KeyCode::KeyI) && shift {
+        bus.emit(EditorCommandId("assets.import"));
+    }
+    if ctrl && keys.just_pressed(KeyCode::KeyV) && shift {
+        bus.emit(EditorCommandId("scene.validate"));
+    }
     if keys.just_pressed(KeyCode::F5) {
         bus.emit(EditorCommandId("assets.refresh"));
     }
-    if keys.just_pressed(KeyCode::Delete) {
+    if keys.just_pressed(KeyCode::Delete) && !alt {
         bus.emit(EditorCommandId("scene.delete"));
     }
     if keys.just_pressed(KeyCode::F6) {
