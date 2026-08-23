@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use bevy_egui::egui;
 
 use crate::{
+    command_executor::CommandExecutionState,
     editor::{EditorPlugin, EditorPluginRegistry},
     panel::PanelRegistry,
 };
@@ -22,7 +23,7 @@ impl EditorPlugin for ConsolePlugin {
     fn build(&self, app: &mut App) {
         app.world_mut()
             .resource_mut::<EditorPluginRegistry>()
-            .register(self.name(), "0.1");
+            .register(self.name(), "1.0");
         app.world_mut().resource_mut::<PanelRegistry>().register(
             crate::panel::PanelId("console"),
             "Console",
@@ -31,7 +32,20 @@ impl EditorPlugin for ConsolePlugin {
     }
 }
 
-fn console_panel(_world: &mut World, ui: &mut egui::Ui) {
-    ui.label("Console service");
-    ui.small("Logging, command output and diagnostics are provided by the console subsystem.");
+fn console_panel(world: &mut World, ui: &mut egui::Ui) {
+    let Some(state) = world.get_resource::<CommandExecutionState>() else {
+        ui.label("Command execution state is not initialized.");
+        return;
+    };
+    ui.strong("Command Console");
+    ui.label(format!("Executed: {}", state.executed));
+    if let Some(last) = &state.last {
+        ui.monospace(format!("Last: {}", last.0));
+    }
+    if let Some(message) = &state.last_message {
+        ui.colored_label(egui::Color32::from_rgb(130, 210, 155), message);
+    }
+    if let Some(error) = &state.last_error {
+        ui.colored_label(egui::Color32::from_rgb(255, 125, 125), error);
+    }
 }
