@@ -174,8 +174,8 @@ mod tests {
 
     #[test]
     fn scene_json_round_trip() {
-        let parent = Entity::from_raw(1);
-        let child = Entity::from_raw(2);
+        let parent = Entity::from_index(1);
+        let child = Entity::from_index(2);
         let document = SceneDocument::from_entities_with_visibility([
             (parent, "Root".to_owned(), Transform::default(), None, true),
             (
