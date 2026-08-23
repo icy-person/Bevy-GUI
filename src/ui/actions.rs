@@ -17,6 +17,7 @@ pub struct UiActions {
     pub save_requested: bool,
     pub transform_edit: Option<TransformEdit>,
     pub name_edit: Option<String>,
+    pub visibility_edit: Option<Visibility>,
     pub parent_selected: bool,
     pub unparent_selected: bool,
 }
@@ -30,6 +31,7 @@ impl UiActions {
             save_requested: viewer.save_requested,
             transform_edit: viewer.transform_edit,
             name_edit: viewer.name_edit.clone(),
+            visibility_edit: viewer.visibility_edit,
             parent_selected: viewer.parent_selected,
             unparent_selected: viewer.unparent_selected,
         }
@@ -54,6 +56,7 @@ pub fn apply_entity_actions(
             .spawn((
                 Transform::default(),
                 Name::new("Entity"),
+                Visibility::Inherited,
                 Pickable::default(),
                 EditorEntity,
                 EditorParent(None),
@@ -71,6 +74,7 @@ pub fn apply_entity_actions(
             .spawn((
                 *current,
                 Name::new("Duplicate"),
+                Visibility::Inherited,
                 Pickable::default(),
                 EditorEntity,
                 EditorParent(None),
@@ -115,6 +119,13 @@ pub fn apply_entity_actions(
         && let Some(entity) = selection.primary()
     {
         commands.entity(entity).insert(Name::new(name.clone()));
+        project.dirty = true;
+    }
+
+    if let Some(visibility) = actions.visibility_edit
+        && let Some(entity) = selection.primary()
+    {
+        commands.entity(entity).insert(visibility);
         project.dirty = true;
     }
 
