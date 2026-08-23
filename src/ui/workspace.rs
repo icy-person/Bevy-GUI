@@ -2,16 +2,17 @@ use bevy_egui::egui;
 
 use crate::{
     command::{EditorCommandBus, EditorCommandId},
-    editor::EditorUiState,
-    project::{EditorMode, ProjectState},
+    project::EditorMode,
 };
 
 use super::welcome::WelcomeState;
 
 pub fn show_app_bar(
     ui: &mut egui::Ui,
-    project: &mut ProjectState,
-    state: &mut EditorUiState,
+    project_name: &str,
+    dirty: bool,
+    mode: EditorMode,
+    status: &str,
     welcome: &mut WelcomeState,
     commands: &mut EditorCommandBus,
 ) {
@@ -26,8 +27,8 @@ pub fn show_app_bar(
                 ui.separator();
                 ui.strong("Bevy-GUI");
                 ui.label("/");
-                ui.label(project.name.as_str());
-                if project.dirty {
+                ui.label(project_name);
+                if dirty {
                     ui.label("•");
                     ui.small("Unsaved");
                 }
@@ -43,28 +44,21 @@ pub fn show_app_bar(
                         commands.emit(EditorCommandId("assets.refresh"));
                     }
                     ui.separator();
-                    for (mode, label) in [
-                        (EditorMode::Play, "▶"),
-                        (EditorMode::Paused, "Ⅱ"),
-                        (EditorMode::Edit, "■"),
+                    for (target_mode, label, command_id, tooltip) in [
+                        (EditorMode::Play, "▶", "project.play", "Play"),
+                        (EditorMode::Paused, "Ⅱ", "project.pause", "Pause"),
+                        (EditorMode::Edit, "■", "project.stop", "Stop"),
                     ] {
                         if ui
-                            .selectable_label(project.mode == mode, label)
-                            .on_hover_text(match mode {
-                                EditorMode::Play => "Play",
-                                EditorMode::Paused => "Pause",
-                                EditorMode::Edit => "Stop",
-                            })
+                            .selectable_label(mode == target_mode, label)
+                            .on_hover_text(tooltip)
                             .clicked()
                         {
-                            project.mode = mode;
+                            commands.emit(EditorCommandId(command_id));
                         }
                     }
                     ui.separator();
-                    if state.status.is_empty() {
-                        state.status = "Ready".into();
-                    }
-                    ui.small(state.status.as_str());
+                    ui.small(if status.is_empty() { "Ready" } else { status });
                 });
             });
         });
