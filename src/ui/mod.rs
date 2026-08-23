@@ -44,11 +44,12 @@ pub struct EditorUiParams<'w, 's> {
     pub registry: Res<'w, EditorCommandRegistry>,
     pub command_bus: ResMut<'w, EditorCommandBus>,
     pub plugins: Res<'w, EditorPluginRegistry>,
-    pub assets: Res<'w, AssetDatabase>,
+    pub assets: ResMut<'w, AssetDatabase>,
     pub profiler: Res<'w, EditorProfiler>,
     pub history: ResMut<'w, TransformHistory>,
     pub transforms: Query<'w, 's, &'static Transform, With<EditorEntity>>,
     pub names: Query<'w, 's, (Entity, Option<&'static Name>), With<EditorEntity>>,
+    pub visibility: Query<'w, 's, &'static Visibility, With<EditorEntity>>,
     pub parent_queries: ParamSet<'w, 's, (
         Query<'w, 's, Option<&'static EditorParent>, With<EditorEntity>>,
         Query<'w, 's, &'static mut EditorParent, With<EditorEntity>>,
@@ -99,6 +100,12 @@ fn editor_ui_system(mut mut_params: EditorUiParams) -> Result {
         .and_then(|entity| mut_params.names.get(entity).ok().and_then(|(_, name)| name))
         .map(|name| name.as_str().to_owned());
 
+    let selected_visible = mut_params.selection.primary().and_then(|entity| {
+        mut_params.visibility.get(entity).ok().map(|visibility| {
+            !matches!(visibility, Visibility::Hidden)
+        })
+    });
+
     let parent_map: Vec<(Entity, Option<Entity>)> = {
         let parents = mut_params.parent_queries.p0();
         entities
@@ -128,12 +135,6 @@ fn editor_ui_system(mut mut_params: EditorUiParams) -> Result {
         })
     });
 
-    let asset_paths: Vec<String> = mut_params
-        .assets
-        .entries
-        .iter()
-        .map(|entry| entry.path.display().to_string())
-        .collect();
     let plugin_names: Vec<String> = mut_params
         .plugins
         .iter()
@@ -172,14 +173,17 @@ fn editor_ui_system(mut mut_params: EditorUiParams) -> Result {
             ui_state: &mut mut_params.state,
             settings: &mut mut_params.settings,
             profiler: &mut mut_params.profiler,
+            assets: &mut mut_params.assets,
             entities: &entities,
             parents: &parent_map,
             selected_transform,
             selected_name,
-            assets: &asset_paths,
+            selected_visible,
             plugin_names: &plugin_names,
             command_count: mut_params.registry.iter().count(),
             transform_edit: None,
+            name_edit: None,
+            visibility_edit: None,
             viewport_focused: false,
             create_entity: false,
             delete_entity: None,
@@ -187,7 +191,6 @@ fn editor_ui_system(mut mut_params: EditorUiParams) -> Result {
             save_requested: false,
             parent_selected: false,
             unparent_selected: false,
-            name_edit: None,
         };
 
         ui.horizontal(|ui| {
@@ -201,13 +204,14 @@ fn editor_ui_system(mut mut_params: EditorUiParams) -> Result {
         rendered_actions = Some(UiActions::from(&viewer));
     });
 
-    let actions = rendered_actions.unwrap_or_else(|| UiActions {
+    let actions = rendered_actions.unwrap_or(UiActions {
         create_entity: false,
         delete_entity: None,
         duplicate_entity: None,
         save_requested: false,
         transform_edit: None,
         name_edit: None,
+        visibility_edit: None,
         parent_selected: false,
         unparent_selected: false,
     });
@@ -220,7 +224,7 @@ fn editor_ui_system(mut mut_params: EditorUiParams) -> Result {
         &mut mut_params.selection,
         &mut mut_params.project,
         &mut mut_params.history,
-        &mut_params.transforms,
+        &mut mut_params.transforms,
         &mut parents,
     );
     drop(parents);
