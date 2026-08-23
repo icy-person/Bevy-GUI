@@ -51,6 +51,8 @@ fn register_default_commands(mut registry: ResMut<EditorCommandRegistry>) {
         ("scene.save", "Save Scene", Some("Ctrl+Shift+S")),
         ("scene.open", "Open Scene", Some("Ctrl+O")),
         ("scene.new_entity", "Create Entity", Some("Ctrl+Shift+A")),
+        ("scene.new_cube", "Create Cube at Cursor", Some("Shift+A")),
+        ("scene.new_plane", "Create Plane at Cursor", Some("Shift+P")),
         ("scene.duplicate", "Duplicate Entity", Some("Ctrl+D")),
         ("scene.delete", "Delete Entity", Some("Delete")),
         ("scene.validate", "Validate Scene", Some("Ctrl+Shift+V")),
@@ -59,10 +61,6 @@ fn register_default_commands(mut registry: ResMut<EditorCommandRegistry>) {
         ("assets.import", "Import Assets", Some("Ctrl+Shift+I")),
         ("editor.command_palette", "Command Palette", Some("Ctrl+Shift+P")),
     ] {
-        registry.register(EditorCommand {
-            id: EditorCommandId(id),
-            label,
-            shortcut,
-        });
+        registry.register(EditorCommand { id: EditorCommandId(id), label, shortcut });
     }
 }
