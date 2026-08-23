@@ -138,28 +138,10 @@ fn editor_ui_system(mut mut_params: EditorUiParams) -> Result {
         .map(|(name, version)| format!("{name} v{version}"))
         .collect();
 
-    let mut viewer = DockViewer {
-        project: &mut mut_params.project,
-        selection: &mut mut_params.selection,
-        ui_state: &mut mut_params.state,
-        settings: &mut mut_params.settings,
-        entities: &entities,
-        parents: &parent_map,
-        selected_transform,
-        selected_name,
-        assets: &asset_paths,
-        plugin_names: &plugin_names,
-        command_count: mut_params.registry.iter().count(),
-        transform_edit: None,
-        viewport_focused: false,
-        create_entity: false,
-        delete_entity: None,
-        duplicate_entity: None,
-        save_requested: false,
-        parent_selected: false,
-        unparent_selected: false,
-        name_edit: None,
-    };
+    let project_name = mut_params.project.name.clone();
+    let project_dirty = mut_params.project.dirty;
+    let project_mode = mut_params.project.mode;
+    let status = mut_params.state.status.clone();
 
     let mut root_ui = egui::Ui::new(
         ctx.clone(),
@@ -172,12 +154,38 @@ fn editor_ui_system(mut mut_params: EditorUiParams) -> Result {
     egui::CentralPanel::default().show(&mut root_ui, |ui| {
         show_app_bar(
             ui,
-            &mut mut_params.project,
-            &mut mut_params.state,
+            &project_name,
+            project_dirty,
+            project_mode,
+            &status,
             &mut mut_params.welcome,
             &mut mut_params.command_bus,
         );
         ui.add_space(6.0);
+
+        let mut viewer = DockViewer {
+            project: &mut mut_params.project,
+            selection: &mut mut_params.selection,
+            ui_state: &mut mut_params.state,
+            settings: &mut mut_params.settings,
+            entities: &entities,
+            parents: &parent_map,
+            selected_transform,
+            selected_name,
+            assets: &asset_paths,
+            plugin_names: &plugin_names,
+            command_count: mut_params.registry.iter().count(),
+            transform_edit: None,
+            viewport_focused: false,
+            create_entity: false,
+            delete_entity: None,
+            duplicate_entity: None,
+            save_requested: false,
+            parent_selected: false,
+            unparent_selected: false,
+            name_edit: None,
+        };
+
         ui.horizontal(|ui| {
             show_navigation_rail(ui, &mut mut_params.welcome);
             ui.separator();
@@ -185,38 +193,38 @@ fn editor_ui_system(mut mut_params: EditorUiParams) -> Result {
                 show_dock_area(content, &mut mut_params.dock, &mut viewer);
             });
         });
+
+        let actions = UiActions::from(&viewer);
+        let save_requested = actions.save_requested;
+        let mut parents = mut_params.parent_queries.p1();
+        apply_entity_actions(
+            &actions,
+            &mut mut_params.commands,
+            &mut mut_params.selection,
+            &mut mut_params.project,
+            &mut mut_params.history,
+            &mut_params.transforms,
+            &mut parents,
+        );
+        drop(parents);
+
+        if save_requested {
+            let parents = mut_params.parent_queries.p0();
+            let scene_entities: Vec<(Entity, String, Transform, Option<Entity>)> = entities
+                .iter()
+                .filter_map(|(entity, name)| {
+                    let transform = mut_params.transforms.get(*entity).ok().copied()?;
+                    let parent = parents
+                        .get(*entity)
+                        .ok()
+                        .flatten()
+                        .and_then(|parent| parent.0);
+                    Some((*entity, name.clone(), transform, parent))
+                })
+                .collect();
+            save_editor_project(&mut mut_params.project, &mut mut_params.state, &scene_entities);
+        }
     });
-
-    let actions = UiActions::from(&viewer);
-    let save_requested = actions.save_requested;
-    let mut parents = mut_params.parent_queries.p1();
-    apply_entity_actions(
-        &actions,
-        &mut mut_params.commands,
-        &mut mut_params.selection,
-        &mut mut_params.project,
-        &mut mut_params.history,
-        &mut_params.transforms,
-        &mut parents,
-    );
-    drop(parents);
-
-    if save_requested {
-        let parents = mut_params.parent_queries.p0();
-        let scene_entities: Vec<(Entity, String, Transform, Option<Entity>)> = entities
-            .iter()
-            .filter_map(|(entity, name)| {
-                let transform = mut_params.transforms.get(*entity).ok().copied()?;
-                let parent = parents
-                    .get(*entity)
-                    .ok()
-                    .flatten()
-                    .and_then(|parent| parent.0);
-                Some((*entity, name.clone(), transform, parent))
-            })
-            .collect();
-        save_editor_project(&mut mut_params.project, &mut mut_params.state, &scene_entities);
-    }
 
     Ok(())
 }
