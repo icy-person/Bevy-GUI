@@ -5,13 +5,14 @@ use bevy_egui::egui;
 
 use crate::{
     editor::EditorUiState,
-    project::{load_project, ProjectState},
+    project::{create_project, load_project, ProjectState},
 };
 
 #[derive(Resource, Debug, Clone)]
 pub struct WelcomeState {
     pub visible: bool,
     pub project_path: String,
+    pub project_name: String,
 }
 
 impl Default for WelcomeState {
@@ -19,6 +20,7 @@ impl Default for WelcomeState {
         Self {
             visible: true,
             project_path: ".".into(),
+            project_name: "My Game".into(),
         }
     }
 }
@@ -35,68 +37,80 @@ pub fn show_welcome(
         .show(ui, |ui| {
             ui.set_min_size(available);
             ui.vertical_centered(|ui| {
-                ui.add_space(70.0);
-                ui.heading(egui::RichText::new("Bevy-GUI").size(34.0).strong());
-                ui.label(egui::RichText::new("A Material 3 game editor for Bevy").size(17.0));
-                ui.add_space(30.0);
+                ui.add_space(54.0);
+                ui.heading(egui::RichText::new("Bevy-GUI").size(38.0).strong());
+                ui.label(egui::RichText::new("Material 3 editor • Scene authoring • Runtime • Build").size(16.0));
+                ui.add_space(28.0);
 
                 ui.horizontal(|ui| {
                     egui::Frame::group(ui.style())
                         .fill(egui::Color32::from_rgb(31, 31, 38))
                         .inner_margin(egui::Margin::same(20))
                         .show(ui, |ui| {
-                            ui.set_width(280.0);
-                            ui.heading("Create");
-                            ui.add_space(8.0);
-                            ui.label("Start a clean Bevy project workspace.");
-                            ui.add_space(16.0);
-                            if ui.button("＋ New Project").clicked() {
-                                *project = ProjectState::default();
-                                project.name = "New Project".into();
-                                project.root = PathBuf::from(".");
-                                editor.status = "New project workspace ready".into();
-                                welcome.visible = false;
+                            ui.set_width(310.0);
+                            ui.heading("New Project");
+                            ui.label("Create a persistent project with manifest, assets and main scene.");
+                            ui.add_space(10.0);
+                            ui.label("Project name");
+                            ui.text_edit_singleline(&mut welcome.project_name);
+                            ui.label("Parent folder");
+                            ui.text_edit_singleline(&mut welcome.project_path);
+                            ui.add_space(10.0);
+                            if ui.button("Create Project").clicked() {
+                                let parent = PathBuf::from(&welcome.project_path);
+                                let name = welcome.project_name.trim();
+                                if name.is_empty() {
+                                    editor.status = "Project name cannot be empty".into();
+                                } else {
+                                    let root = parent.join(name);
+                                    match create_project(&root, name) {
+                                        Ok(created) => {
+                                            *project = created;
+                                            editor.status = format!("Created project at {}", project.root.display());
+                                            welcome.visible = false;
+                                        }
+                                        Err(error) => editor.status = format!("Create failed: {error}"),
+                                    }
+                                }
                             }
                         });
+
                     egui::Frame::group(ui.style())
                         .fill(egui::Color32::from_rgb(31, 31, 38))
                         .inner_margin(egui::Margin::same(20))
                         .show(ui, |ui| {
-                            ui.set_width(280.0);
-                            ui.heading("Open");
-                            ui.add_space(8.0);
-                            ui.label("Open a folder containing project.godot-rs.json");
-                            ui.add_space(8.0);
+                            ui.set_width(310.0);
+                            ui.heading("Open Project");
+                            ui.label("Open a folder containing project.godot-rs.json.");
+                            ui.add_space(10.0);
                             ui.text_edit_singleline(&mut welcome.project_path);
                             if ui.button("Open Project").clicked() {
                                 match load_project(PathBuf::from(&welcome.project_path).as_path()) {
                                     Ok(loaded) => {
                                         *project = loaded;
-                                        editor.status = "Project loaded".into();
+                                        editor.status = format!("Loaded {}", project.name);
                                         welcome.visible = false;
                                     }
-                                    Err(error) => {
-                                        editor.status = format!("Open failed: {error}");
-                                    }
+                                    Err(error) => editor.status = format!("Open failed: {error}"),
                                 }
                             }
                         });
                 });
 
-                ui.add_space(26.0);
+                ui.add_space(24.0);
                 egui::Frame::group(ui.style())
                     .fill(egui::Color32::from_rgb(24, 24, 30))
                     .inner_margin(egui::Margin::same(16))
                     .show(ui, |ui| {
-                        ui.set_width(590.0);
-                        ui.heading("Quick Start");
-                        ui.label("Viewport • Hierarchy • Inspector • Assets • Console • Plugins");
-                        ui.add_space(8.0);
-                        ui.small("Use this screen as the project entry point; the full editor opens after project creation or loading.");
+                        ui.set_width(640.0);
+                        ui.heading("Editor workflow");
+                        ui.label("2D / 3D viewport  •  Hierarchy  •  Inspector  •  Assets  •  Console  •  Profiler");
+                        ui.add_space(6.0);
+                        ui.small("Projects are written to disk immediately, so opening the same directory later restores the manifest and main scene.");
                     });
 
-                ui.add_space(24.0);
-                ui.label(egui::RichText::new("Material 3 inspired • plugin-first • Bevy 0.19").weak());
+                ui.add_space(20.0);
+                ui.label(egui::RichText::new("Plugin-first • Bevy 0.19 • Vulkan / OpenGL / native windowing").weak());
             });
         });
 }
