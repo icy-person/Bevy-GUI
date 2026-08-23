@@ -9,6 +9,7 @@ pub enum EditorTab {
     Inspector,
     Assets,
     Console,
+    Profiler,
     Plugins,
     Settings,
 }
@@ -21,6 +22,7 @@ impl EditorTab {
             Self::Inspector => "Inspector",
             Self::Assets => "Asset Browser",
             Self::Console => "Console",
+            Self::Profiler => "Profiler",
             Self::Plugins => "Plugins",
             Self::Settings => "Settings",
         }
@@ -39,7 +41,7 @@ impl Default for EditorDockState {
         let root = NodeIndex::root();
         let [_old, left] = tree.split_left(root, 0.20, vec![EditorTab::Hierarchy]);
         let [_old, right] = tree.split_right(root, 0.20, vec![EditorTab::Inspector]);
-        tree.split_below(root, 0.74, vec![EditorTab::Console]);
+        tree.split_below(root, 0.74, vec![EditorTab::Console, EditorTab::Profiler]);
         tree.split_below(left, 0.65, vec![EditorTab::Assets]);
         tree.split_below(right, 0.65, vec![EditorTab::Plugins, EditorTab::Settings]);
         Self { state }
