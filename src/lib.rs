@@ -33,7 +33,7 @@ pub use export::{default_profile, export_project, ExportError, ExportProfile, Ex
 pub use history::{TransformHistory, TransformSnapshot};
 pub use panel::{PanelId, PanelRegistry};
 pub use profiler::EditorProfiler;
-pub use project::{load_project, save_project, ProjectIoError, ProjectManifest, ProjectState};
+pub use project::{create_project, load_project, save_project, ProjectIoError, ProjectManifest, ProjectState};
 pub use runtime::PlaySession;
 pub use scene::{load_scene, save_scene, spawn_scene, SceneDocument, SceneEntity, SceneIoError, SceneNode};
 pub use scene_model::{EditorParent, SceneEditorState, SceneNodeModel};
