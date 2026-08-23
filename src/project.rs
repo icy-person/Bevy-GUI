@@ -93,3 +93,34 @@ pub fn load_project(root: &Path) -> Result<ProjectState, ProjectIoError> {
     let manifest: ProjectManifest = serde_json::from_str(&json).map_err(ProjectIoError::Parse)?;
     Ok(manifest.apply_to_state(root.to_path_buf()))
 }
+
+pub fn create_project(root: &Path, name: &str) -> Result<ProjectState, ProjectIoError> {
+    fs::create_dir_all(root.join("assets")).map_err(ProjectIoError::CreateDirectory)?;
+    fs::create_dir_all(root.join("scenes")).map_err(ProjectIoError::CreateDirectory)?;
+    fs::create_dir_all(root.join(".bevy-gui")).map_err(ProjectIoError::CreateDirectory)?;
+
+    let main_scene = PathBuf::from("scenes/main.scene.json");
+    let state = ProjectState {
+        name: name.trim().to_owned(),
+        root: root.to_path_buf(),
+        dirty: false,
+        mode: EditorMode::Edit,
+        main_scene: Some(main_scene.clone()),
+    };
+    save_project(root, &state)?;
+
+    let scene = crate::scene::SceneDocument {
+        format_version: 2,
+        entities: Vec::new(),
+    };
+    crate::scene::save_scene(&root.join(&main_scene), &scene)
+        .map_err(|error| ProjectIoError::Write(io::Error::other(error.to_string())))?;
+
+    fs::write(
+        root.join("README.md"),
+        format!("# {}\n\nCreated with Bevy-GUI.\n", state.name),
+    )
+    .map_err(ProjectIoError::Write)?;
+
+    Ok(state)
+}
