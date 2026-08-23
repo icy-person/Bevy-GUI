@@ -222,7 +222,7 @@ mod tests {
     use super::*;
 
     fn e(index: u32) -> Entity {
-        Entity::from_index(index)
+        Entity::from_bits(index as u64)
     }
 
     #[test]
