@@ -1,10 +1,15 @@
 use bevy::prelude::*;
 
 use crate::{
+    asset_pipeline::ImportDatabase,
     assets::AssetDatabase,
     command::{EditorCommandBus, EditorCommandId},
     export::{default_profile, export_project},
+    prefab::{prefab_path, save_prefab, PrefabDocument},
     project::{save_project, EditorMode, ProjectState},
+    scene::{load_scene, SceneEntity},
+    scene_tools::validate_scene,
+    scene_model::EditorParent,
     selection::SelectionState,
     viewport::EditorEntity,
 };
@@ -21,10 +26,12 @@ pub fn execute_editor_commands(
     mut bus: ResMut<EditorCommandBus>,
     mut project: ResMut<ProjectState>,
     mut assets: ResMut<AssetDatabase>,
+    mut imports: ResMut<ImportDatabase>,
     mut state: ResMut<CommandExecutionState>,
     mut selection: ResMut<SelectionState>,
     mut commands: Commands,
     transforms: Query<&Transform, With<EditorEntity>>,
+    names: Query<(Entity, Option<&Name>, Option<&EditorParent>, Option<&Visibility>), With<EditorEntity>>,
 ) {
     for id in bus.drain() {
         state.executed = state.executed.saturating_add(1);
@@ -68,6 +75,78 @@ pub fn execute_editor_commands(
                 assets.refresh_requested = true;
                 state.last_message = Some("Asset scan requested".into());
             }
+            "assets.import" => {
+                let report = imports.import_all();
+                let _ = imports.save();
+                state.last_message = Some(format!(
+                    "Imported {} assets; {} failed; {} unsupported (generation {})",
+                    report.imported, report.failed, report.unsupported, report.generation
+                ));
+                if !report.errors.is_empty() {
+                    state.last_error = Some(report.errors.join(" | "));
+                }
+            }
+            "scene.validate" => {
+                let Some(main_scene) = project.main_scene.as_ref() else {
+                    state.last_error = Some("No main scene is configured".into());
+                    continue;
+                };
+                match load_scene(&project.root.join(main_scene)) {
+                    Ok(document) => {
+                        let report = validate_scene(&document);
+                        if report.is_valid() {
+                            state.last_message = Some(format!(
+                                "Scene valid: {} entities, {} warnings",
+                                document.entities.len(), report.warnings()
+                            ));
+                        } else {
+                            state.last_error = Some(format!(
+                                "Scene validation failed: {} errors, {} warnings",
+                                report.errors(), report.warnings()
+                            ));
+                        }
+                    }
+                    Err(error) => state.last_error = Some(error.to_string()),
+                }
+            }
+            "scene.prefab_create" => {
+                if selection.entities.is_empty() {
+                    state.last_error = Some("Select one or more entities before creating a prefab".into());
+                    continue;
+                }
+                let selected: std::collections::BTreeSet<_> = selection.entities.iter().copied().collect();
+                let mut snapshot = Vec::<(Entity, String, Transform, Option<Entity>, bool)>::new();
+                for entity in &selection.entities {
+                    let Ok((_, name, parent, visibility)) = names.get(*entity) else { continue };
+                    let Ok(transform) = transforms.get(*entity) else { continue };
+                    let parent = parent.and_then(|value| value.0).filter(|parent| selected.contains(parent));
+                    let visible = visibility.map(|value| !matches!(value, Visibility::Hidden)).unwrap_or(true);
+                    snapshot.push((
+                        *entity,
+                        name.map(|value| value.as_str().to_owned()).unwrap_or_else(|| "Entity".into()),
+                        *transform,
+                        parent,
+                        visible,
+                    ));
+                }
+                if snapshot.is_empty() {
+                    state.last_error = Some("Selected entities are no longer available".into());
+                    continue;
+                }
+                let base = project.name.trim().replace(' ', "_");
+                let mut path = prefab_path(&project.root, &format!("{base}_Prefab"));
+                let mut suffix = 1u32;
+                while path.exists() {
+                    path = prefab_path(&project.root, &format!("{base}_Prefab_{suffix}"));
+                    suffix += 1;
+                }
+                let prefab_name = path.file_stem().and_then(|value| value.to_str()).unwrap_or("Prefab");
+                let prefab = PrefabDocument::from_scene_entities(prefab_name, snapshot);
+                match save_prefab(&path, &prefab) {
+                    Ok(()) => state.last_message = Some(format!("Created prefab {}", path.display())),
+                    Err(error) => state.last_error = Some(error.to_string()),
+                }
+            }
             "scene.new_entity" => {
                 let entity = commands
                     .spawn((
@@ -75,7 +154,7 @@ pub fn execute_editor_commands(
                         Name::new("Entity"),
                         Visibility::Inherited,
                         EditorEntity,
-                        crate::scene_model::EditorParent(None),
+                        EditorParent(None),
                         Pickable::default(),
                     ))
                     .id();
@@ -93,7 +172,7 @@ pub fn execute_editor_commands(
                                     Name::new("Duplicate"),
                                     Visibility::Inherited,
                                     EditorEntity,
-                                    crate::scene_model::EditorParent(None),
+                                    EditorParent(None),
                                     Pickable::default(),
                                 ))
                                 .id();
@@ -101,9 +180,7 @@ pub fn execute_editor_commands(
                             project.dirty = true;
                             state.last_message = Some("Entity duplicated".into());
                         }
-                        Err(_) => {
-                            state.last_message = Some("Selected entity is no longer available".into());
-                        }
+                        Err(_) => state.last_error = Some("Selected entity is no longer available".into()),
                     }
                 } else {
                     state.last_message = Some("Select an entity first".into());
@@ -121,11 +198,7 @@ pub fn execute_editor_commands(
                 }
             }
             "edit.undo" | "edit.redo" => {
-                state.last_message = Some(if id.0 == "edit.undo" {
-                    "Undo requested".into()
-                } else {
-                    "Redo requested".into()
-                });
+                state.last_message = Some(if id.0 == "edit.undo" { "Undo requested".into() } else { "Redo requested".into() });
             }
             _ => {}
         }
