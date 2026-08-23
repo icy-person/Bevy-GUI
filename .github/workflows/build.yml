@@ -1,6 +1,8 @@
 name: build
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       profile:
@@ -12,12 +14,26 @@ on:
           - release
           - debug
 
+env:
+  BUILD_PROFILE: release
+
 jobs:
   build-linux-x86_64:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Resolve build profile
+        id: profile
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "profile=${{ inputs.profile }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "profile=release" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Install native dependencies
         run: |
@@ -41,19 +57,27 @@ jobs:
       - name: Cache
         uses: Swatinem/rust-cache@v2
 
+      - name: Verify formatting
+        run: cargo fmt --all -- --check
+
       - name: Build editor
         run: |
-          if [ "${{ inputs.profile }}" = "release" ]; then
+          set -euo pipefail
+          PROFILE="${{ steps.profile.outputs.profile }}"
+          if [ "$PROFILE" = "release" ]; then
             cargo build --release --bin bevy-gui
           else
             cargo build --bin bevy-gui
           fi
 
+      - name: Run tests
+        run: cargo test --all-targets
+
       - name: Prepare bundle
         shell: bash
         run: |
           set -euo pipefail
-          PROFILE="${{ inputs.profile }}"
+          PROFILE="${{ steps.profile.outputs.profile }}"
           DIST="dist/bevy-gui-linux-x86_64-${PROFILE}"
           mkdir -p "$DIST"
           if [ "$PROFILE" = "release" ]; then
@@ -71,9 +95,9 @@ jobs:
       - name: Upload editor artifact
         uses: actions/upload-artifact@v4
         with:
-          name: bevy-gui-linux-x86_64-${{ inputs.profile }}
+          name: bevy-gui-linux-x86_64-${{ steps.profile.outputs.profile }}
           path: |
-            bevy-gui-linux-x86_64-${{ inputs.profile }}.tar.gz
-            dist/bevy-gui-linux-x86_64-${{ inputs.profile }}
+            bevy-gui-linux-x86_64-${{ steps.profile.outputs.profile }}.tar.gz
+            dist/bevy-gui-linux-x86_64-${{ steps.profile.outputs.profile }}
           if-no-files-found: error
           retention-days: 14
