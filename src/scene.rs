@@ -20,6 +20,12 @@ pub struct SceneEntity {
     pub translation: [f32; 3],
     pub rotation: [f32; 4],
     pub scale: [f32; 3],
+    #[serde(default = "default_visible")]
+    pub visible: bool,
+}
+
+fn default_visible() -> bool {
+    true
 }
 
 impl SceneDocument {
@@ -27,31 +33,55 @@ impl SceneDocument {
     where
         I: IntoIterator<Item = (Entity, String, Transform, Option<Entity>)>,
     {
-        let mut ids = std::collections::BTreeMap::new();
-        let snapshot: Vec<_> = entities.into_iter().collect();
-        for (index, (entity, _, _, _)) in snapshot.iter().enumerate() {
-            ids.insert(*entity, index as u64 + 1);
-        }
-        Self {
-            format_version: 2,
-            entities: snapshot
-                .into_iter()
-                .enumerate()
-                .map(|(index, (_entity, name, transform, parent))| {
-                    SceneEntity::from_transform(
-                        index as u64 + 1,
-                        parent.and_then(|value| ids.get(&value).copied()),
-                        name,
-                        transform,
-                    )
-                })
-                .collect(),
-        }
+        self::build_document(entities.into_iter().map(|(entity, name, transform, parent)| {
+            (entity, name, transform, parent, true)
+        }))
+    }
+
+    pub fn from_entities_with_visibility<I>(entities: I) -> Self
+    where
+        I: IntoIterator<Item = (Entity, String, Transform, Option<Entity>, bool)>,
+    {
+        build_document(entities)
+    }
+}
+
+fn build_document<I>(entities: I) -> SceneDocument
+where
+    I: IntoIterator<Item = (Entity, String, Transform, Option<Entity>, bool)>,
+{
+    let snapshot: Vec<_> = entities.into_iter().collect();
+    let mut ids = std::collections::BTreeMap::new();
+    for (index, (entity, _, _, _, _)) in snapshot.iter().enumerate() {
+        ids.insert(*entity, index as u64 + 1);
+    }
+
+    SceneDocument {
+        format_version: 3,
+        entities: snapshot
+            .into_iter()
+            .enumerate()
+            .map(|(index, (_entity, name, transform, parent, visible))| {
+                SceneEntity::from_transform(
+                    index as u64 + 1,
+                    parent.and_then(|value| ids.get(&value).copied()),
+                    name,
+                    transform,
+                    visible,
+                )
+            })
+            .collect(),
     }
 }
 
 impl SceneEntity {
-    fn from_transform(id: u64, parent: Option<u64>, name: String, transform: Transform) -> Self {
+    fn from_transform(
+        id: u64,
+        parent: Option<u64>,
+        name: String,
+        transform: Transform,
+        visible: bool,
+    ) -> Self {
         Self {
             id,
             parent,
@@ -64,6 +94,7 @@ impl SceneEntity {
                 transform.rotation.w,
             ],
             scale: transform.scale.to_array(),
+            visible,
         }
     }
 
@@ -91,6 +122,7 @@ pub fn spawn_scene(commands: &mut Commands, document: &SceneDocument) -> Vec<Ent
             .spawn((
                 Name::new(entity.name.clone()),
                 entity.transform(),
+                if entity.visible { Visibility::Visible } else { Visibility::Hidden },
                 SceneNode,
                 crate::EditorParent(None),
             ))
@@ -144,8 +176,8 @@ mod tests {
     fn scene_json_round_trip() {
         let parent = Entity::from_raw(1);
         let child = Entity::from_raw(2);
-        let document = SceneDocument::from_entities([
-            (parent, "Root".to_owned(), Transform::default(), None),
+        let document = SceneDocument::from_entities_with_visibility([
+            (parent, "Root".to_owned(), Transform::default(), None, true),
             (
                 child,
                 "Player".to_owned(),
@@ -155,14 +187,16 @@ mod tests {
                     scale: Vec3::splat(2.0),
                 },
                 Some(parent),
+                false,
             ),
         ]);
         let json = serde_json::to_string(&document).expect("scene serialization should succeed");
         let restored: SceneDocument =
             serde_json::from_str(&json).expect("scene parsing should succeed");
-        assert_eq!(restored.format_version, 2);
+        assert_eq!(restored.format_version, 3);
         assert_eq!(restored.entities.len(), 2);
         assert_eq!(restored.entities[1].name, "Player");
         assert_eq!(restored.entities[1].parent, Some(1));
+        assert!(!restored.entities[1].visible);
     }
 }
