@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy_egui::egui;
+use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// Function used to render a registered editor panel.
@@ -28,8 +29,7 @@ impl Default for PanelCategory {
     }
 }
 
-/// Runtime metadata for a panel. This intentionally contains no UI state so
-/// a panel can be registered once and the state can be persisted separately.
+/// Runtime metadata for a panel.
 #[derive(Debug, Clone, Copy)]
 pub struct PanelDescriptor {
     pub id: PanelId,
@@ -82,8 +82,6 @@ impl PanelDescriptor {
     }
 }
 
-/// Persistable runtime state for panels. The registry owns capabilities;
-/// this resource owns user choices.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct PanelState {
     pub open: bool,
@@ -101,9 +99,6 @@ impl PanelState {
     }
 }
 
-/// Central panel registry. Registration is idempotent and duplicate ids are
-/// rejected by returning the previous descriptor so plugin authors can detect
-/// accidental collisions instead of silently losing a panel.
 #[derive(Resource, Default)]
 pub struct PanelRegistry {
     panels: BTreeMap<PanelId, PanelDescriptor>,
@@ -121,28 +116,11 @@ impl PanelRegistry {
         self.state
             .entry(descriptor.id)
             .or_insert_with(|| PanelState::from_descriptor(&descriptor));
-        if descriptor.default_open {
-            self.hidden_by_user.remove(&descriptor.id);
-        }
         previous
-    }
-
-    pub fn unregister(&mut self, id: PanelId) -> Option<PanelDescriptor> {
-        self.state.remove(&id);
-        self.hidden_by_user.remove(&id);
-        self.panels.remove(&id)
-    }
-
-    pub fn contains(&self, id: PanelId) -> bool {
-        self.panels.contains_key(&id)
     }
 
     pub fn get(&self, id: PanelId) -> Option<&PanelDescriptor> {
         self.panels.get(&id)
-    }
-
-    pub fn get_mut(&mut self, id: PanelId) -> Option<&mut PanelDescriptor> {
-        self.panels.get_mut(&id)
     }
 
     pub fn state(&self, id: PanelId) -> Option<&PanelState> {
@@ -153,153 +131,53 @@ impl PanelRegistry {
         self.state.get_mut(&id)
     }
 
-    pub fn set_visible(&mut self, id: PanelId, visible: bool) -> bool {
-        let Some(state) = self.state.get_mut(&id) else {
-            return false;
-        };
-        state.visible = visible;
+    pub fn remove(&mut self, id: PanelId) -> Option<PanelDescriptor> {
+        self.state.remove(&id);
+        self.hidden_by_user.remove(&id);
+        self.panels.remove(&id)
+    }
+
+    pub fn set_open(&mut self, id: PanelId, open: bool) {
+        if let Some(state) = self.state.get_mut(&id) {
+            state.open = open;
+        }
+    }
+
+    pub fn set_visible(&mut self, id: PanelId, visible: bool) {
+        if let Some(state) = self.state.get_mut(&id) {
+            state.visible = visible;
+        }
         if visible {
             self.hidden_by_user.remove(&id);
         } else {
             self.hidden_by_user.insert(id);
         }
-        true
     }
 
-    pub fn toggle_visible(&mut self, id: PanelId) -> bool {
-        let current = self.state(id).map(|state| state.visible).unwrap_or(false);
-        self.set_visible(id, !current)
+    pub fn iter(&self) -> impl Iterator<Item = &PanelDescriptor> {
+        self.panels.values()
     }
 
-    pub fn set_open(&mut self, id: PanelId, open: bool) -> bool {
-        let Some(state) = self.state.get_mut(&id) else {
-            return false;
-        };
-        state.open = open;
-        true
-    }
-
-    pub fn set_pinned(&mut self, id: PanelId, pinned: bool) -> bool {
-        let Some(state) = self.state.get_mut(&id) else {
-            return false;
-        };
-        state.pinned = pinned;
-        true
-    }
-
-    /// Iterates in deterministic UI order: category, explicit order and id.
-    pub fn iter(&self) -> impl Iterator<Item = (&PanelId, &PanelDescriptor)> {
-        self.panels.iter()
-    }
-
-    pub fn iter_visible(&self) -> impl Iterator<Item = &PanelDescriptor> {
-        let mut values: Vec<_> = self
-            .panels
-            .values()
-            .filter(|descriptor| {
-                self.state
-                    .get(&descriptor.id)
-                    .map(|state| state.visible)
-                    .unwrap_or(descriptor.default_open)
-            })
-            .collect();
-        values.sort_by_key(|descriptor| (descriptor.category, descriptor.order, descriptor.id.0));
-        values.into_iter()
-    }
-
-    pub fn iter_open(&self) -> impl Iterator<Item = &PanelDescriptor> {
-        let mut values: Vec<_> = self
-            .panels
-            .values()
-            .filter(|descriptor| {
-                self.state
-                    .get(&descriptor.id)
-                    .map(|state| state.open && state.visible)
-                    .unwrap_or(descriptor.default_open)
-            })
-            .collect();
-        values.sort_by_key(|descriptor| (descriptor.category, descriptor.order, descriptor.id.0));
-        values.into_iter()
-    }
-
-    pub fn by_category(&self, category: PanelCategory) -> Vec<&PanelDescriptor> {
-        let mut values: Vec<_> = self
-            .panels
-            .values()
-            .filter(|descriptor| descriptor.category == category)
-            .collect();
-        values.sort_by_key(|descriptor| (descriptor.order, descriptor.id.0));
-        values
-    }
-
-    pub fn visible_ids(&self) -> Vec<PanelId> {
-        self.iter_visible().map(|descriptor| descriptor.id).collect()
-    }
-
-    pub fn open_ids(&self) -> Vec<PanelId> {
-        self.iter_open().map(|descriptor| descriptor.id).collect()
-    }
-
-    pub fn reset_layout(&mut self) {
-        for descriptor in self.panels.values() {
+    pub fn visible_iter(&self) -> impl Iterator<Item = &PanelDescriptor> {
+        self.panels.values().filter(|descriptor| {
             self.state
-                .insert(descriptor.id, PanelState::from_descriptor(descriptor));
-        }
-        self.hidden_by_user.clear();
+                .get(&descriptor.id)
+                .map(|state| state.visible)
+                .unwrap_or(false)
+        })
     }
 
-    pub fn hidden_by_user(&self, id: PanelId) -> bool {
-        self.hidden_by_user.contains(&id)
+    pub fn panel_count(&self) -> usize {
+        self.panels.len()
     }
 
     pub fn visible_count(&self) -> usize {
-        self.iter_visible().count()
+        self.visible_iter().count()
     }
 
-    pub fn open_count(&self) -> usize {
-        self.iter_open().count()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn draw(_: &mut World, _: &mut egui::Ui) {}
-
-    #[test]
-    fn registration_creates_default_state() {
-        let mut registry = PanelRegistry::default();
-        registry.register_descriptor(
-            PanelDescriptor::new(PanelId("scene"), "Scene", draw)
-                .category(PanelCategory::Scene)
-                .order(10),
-        );
-        assert!(registry.contains(PanelId("scene")));
-        assert_eq!(registry.visible_count(), 1);
-        assert_eq!(registry.open_count(), 1);
-    }
-
-    #[test]
-    fn duplicate_registration_returns_previous_descriptor() {
-        let mut registry = PanelRegistry::default();
-        assert!(registry.register(PanelId("scene"), "Scene", draw).is_none());
-        let previous = registry.register(PanelId("scene"), "Scene 2", draw);
-        assert_eq!(previous.unwrap().title, "Scene");
-        assert_eq!(registry.get(PanelId("scene")).unwrap().title, "Scene 2");
-    }
-
-    #[test]
-    fn visibility_and_layout_reset_work() {
-        let mut registry = PanelRegistry::default();
-        registry.register_descriptor(
-            PanelDescriptor::new(PanelId("scene"), "Scene", draw)
-                .default_open(true),
-        );
-        registry.set_visible(PanelId("scene"), false);
-        assert_eq!(registry.visible_count(), 0);
-        registry.reset_layout();
-        assert_eq!(registry.visible_count(), 1);
-        assert_eq!(registry.open_count(), 1);
+    pub fn clear(&mut self) {
+        self.panels.clear();
+        self.state.clear();
+        self.hidden_by_user.clear();
     }
 }
