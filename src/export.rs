@@ -82,8 +82,9 @@ pub fn export_project(project: &ProjectState, profile: &ExportProfile) -> Result
         let _ = fs::copy(&source, &destination);
         destination
     });
-    if executable.is_some() {
+    if let Some(path) = &executable {
         files += 1;
+        bytes += fs::metadata(path).map(|meta| meta.len()).unwrap_or(0);
     }
 
     Ok(ExportReport {
@@ -110,25 +111,26 @@ fn build_runtime(project: &ProjectState) -> Result<(), ExportError> {
 }
 
 fn runtime_binary_path(project: &ProjectState) -> Option<PathBuf> {
-    let package_name = project
-        .name
-        .chars()
-        .fold(String::new(), |mut out, ch| {
-            if ch.is_ascii_alphanumeric() || ch == '_' {
-                out.push(ch.to_ascii_lowercase());
-            } else if !out.ends_with('_') {
-                out.push('_');
-            }
-            out
-        })
-        .trim_matches('_')
-        .to_owned();
-    let package_name = if package_name.is_empty() {
-        "bevy_game".to_owned()
-    } else {
-        package_name
-    };
+    let package_name = crate_name(&project.name);
     Some(project.root.join("target").join("release").join(package_name))
+}
+
+fn crate_name(name: &str) -> String {
+    let mut result = String::with_capacity(name.len());
+    for ch in name.chars() {
+        if ch.is_ascii_alphanumeric() || ch == '_' {
+            result.push(ch.to_ascii_lowercase());
+        } else if !result.ends_with('_') {
+            result.push('_');
+        }
+    }
+    let trimmed = result.trim_matches('_');
+    let fallback = if trimmed.is_empty() { "bevy_game" } else { trimmed };
+    if fallback.chars().next().is_some_and(|ch| ch.is_ascii_digit()) {
+        format!("game_{fallback}")
+    } else {
+        fallback.to_owned()
+    }
 }
 
 fn copy_tree(source: &Path, destination: &Path, files: &mut usize, bytes: &mut u64) -> Result<(), ExportError> {
