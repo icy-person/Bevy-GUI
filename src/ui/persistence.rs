@@ -11,12 +11,14 @@ use crate::{
 pub fn save_editor_project(
     project: &mut ProjectState,
     state: &mut EditorUiState,
-    entities: &[(Entity, String, Transform, Option<Entity>)],
+    entities: &[(Entity, String, Transform, Option<Entity>, bool)],
 ) {
-    let document = SceneDocument::from_entities(
+    let document = SceneDocument::from_entities_with_visibility(
         entities
             .iter()
-            .map(|(entity, name, transform, parent)| (*entity, name.clone(), *transform, *parent)),
+            .map(|(entity, name, transform, parent, visible)| {
+                (*entity, name.clone(), *transform, *parent, *visible)
+            }),
     );
     let relative = project
         .main_scene
