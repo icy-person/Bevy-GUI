@@ -231,7 +231,7 @@ fn editor_ui_system(mut mut_params: EditorUiParams) -> Result {
 
     if save_requested {
         let parents = mut_params.parent_queries.p0();
-        let scene_entities: Vec<(Entity, String, Transform, Option<Entity>)> = entities
+        let scene_entities: Vec<(Entity, String, Transform, Option<Entity>, bool)> = entities
             .iter()
             .filter_map(|(entity, name)| {
                 let transform = mut_params.transforms.get(*entity).ok().copied()?;
@@ -240,7 +240,12 @@ fn editor_ui_system(mut mut_params: EditorUiParams) -> Result {
                     .ok()
                     .flatten()
                     .and_then(|parent| parent.0);
-                Some((*entity, name.clone(), transform, parent))
+                let visible = mut_params
+                    .visibility
+                    .get(*entity)
+                    .ok()
+                    .is_none_or(|visibility| !matches!(visibility, Visibility::Hidden));
+                Some((*entity, name.clone(), transform, parent, visible))
             })
             .collect();
         save_editor_project(&mut mut_params.project, &mut mut_params.state, &scene_entities);
