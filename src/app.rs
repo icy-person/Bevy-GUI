@@ -9,6 +9,7 @@ use crate::{
     editor::register_builtin_state,
     panel::PanelRegistry,
     plugins::install_builtin_editor_plugins,
+    profiler::install_profiler,
     project::ProjectState,
     scene_model::SceneEditorState,
     settings::install_settings,
@@ -33,6 +34,7 @@ impl Plugin for BevyGuiPlugin {
         register_builtin_state(app);
         install_settings(app);
         install_asset_database(app);
+        install_profiler(app);
         install_builtin_editor_plugins(app);
         install_viewport(app);
         install_2d_viewport(app);
