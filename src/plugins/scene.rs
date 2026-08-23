@@ -49,9 +49,7 @@ fn scene_panel(world: &mut World, ui: &mut egui::Ui) {
             mode_badge(ui, project.mode);
         });
     });
-
     ui.separator();
-
     ui.label(egui::RichText::new(&project.name).size(16.0).strong());
     ui.small(format!("Root: {}", project.root.display()));
 
@@ -84,7 +82,7 @@ fn scene_panel(world: &mut World, ui: &mut egui::Ui) {
             .show(ui, |ui| {
                 stat_row(ui, "Revision", state.revision.to_string());
                 stat_row(ui, "Saved", state.saved_revision.to_string());
-                stat_row(ui, "State", if state.dirty() { "Modified" } else { "Saved" });
+                stat_row(ui, "State", if state.dirty() { "Modified".to_owned() } else { "Saved".to_owned() });
                 stat_row(
                     ui,
                     "Loaded path",
@@ -131,14 +129,20 @@ fn draw_validation(ui: &mut egui::Ui, report: Option<&SceneValidationReport>) {
         .show(ui, |ui| match report {
             Some(report) if report.is_valid() => {
                 ui.colored_label(egui::Color32::from_rgb(125, 220, 160), "Scene valid");
-                stat_row(ui, "Entities", report.entity_count().to_string());
                 stat_row(ui, "Warnings", report.warnings().to_string());
             }
             Some(report) => {
                 ui.colored_label(egui::Color32::from_rgb(255, 125, 125), "Scene has validation errors");
-                stat_row(ui, "Entities", report.entity_count().to_string());
                 stat_row(ui, "Errors", report.errors().to_string());
                 stat_row(ui, "Warnings", report.warnings().to_string());
+                for issue in report.issues.iter().take(12) {
+                    let color = match issue.severity {
+                        crate::scene_tools::ValidationSeverity::Error => egui::Color32::from_rgb(255, 125, 125),
+                        crate::scene_tools::ValidationSeverity::Warning => egui::Color32::from_rgb(255, 190, 96),
+                        crate::scene_tools::ValidationSeverity::Info => egui::Color32::from_rgb(140, 190, 255),
+                    };
+                    ui.colored_label(color, &issue.message);
+                }
             }
             None => ui.label("No scene is currently available for validation."),
         });
