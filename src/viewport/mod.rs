@@ -7,11 +7,13 @@ use bevy::prelude::*;
 mod components;
 mod gizmo;
 mod input;
+mod picking;
 mod runtime;
 mod scene;
 
 pub use components::{Editor3dCamera, Editor3dGrid, EditorEntity, GizmoHistoryTracker, InitialSelected};
 pub use input::editor_input;
+pub use picking::{PlacementAxis, PlacementSettings, ViewportCursor};
 
 use crate::editor::{EditorUiState, ViewportMode};
 use crate::history::TransformHistory;
@@ -25,12 +27,15 @@ pub fn install_viewport(app: &mut App) {
         .init_resource::<PlaySession>()
         .insert_resource(TransformHistory::with_capacity(256))
         .init_resource::<GizmoHistoryTracker>()
+        .init_resource::<ViewportCursor>()
+        .init_resource::<PlacementSettings>()
         .add_systems(Startup, scene::setup_editor_scene)
         .add_systems(
             Update,
             (
                 sync_3d_visibility,
                 apply_camera_settings,
+                picking::update_viewport_cursor,
                 select_initial_entity,
                 input::editor_input,
                 runtime::apply_runtime_mode,
