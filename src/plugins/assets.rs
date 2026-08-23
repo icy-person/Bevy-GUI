@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use bevy_egui::egui;
 
 use crate::{
+    assets::AssetDatabase,
     editor::{EditorPlugin, EditorPluginRegistry},
     panel::PanelRegistry,
 };
@@ -22,7 +23,7 @@ impl EditorPlugin for AssetBrowserPlugin {
     fn build(&self, app: &mut App) {
         app.world_mut()
             .resource_mut::<EditorPluginRegistry>()
-            .register(self.name(), "0.1");
+            .register(self.name(), "1.0");
         app.world_mut().resource_mut::<PanelRegistry>().register(
             crate::panel::PanelId("assets"),
             "Assets",
@@ -31,7 +32,19 @@ impl EditorPlugin for AssetBrowserPlugin {
     }
 }
 
-fn asset_panel(_world: &mut World, ui: &mut egui::Ui) {
-    ui.label("Asset database service");
-    ui.small("Import, indexing, previews and drag/drop are provided by the asset subsystem.");
+fn asset_panel(world: &mut World, ui: &mut egui::Ui) {
+    let Some(database) = world.get_resource::<AssetDatabase>() else {
+        ui.label("Asset database is not initialized.");
+        return;
+    };
+    ui.horizontal(|ui| {
+        ui.strong("Asset Database");
+        ui.label(format!("generation {}", database.generation));
+    });
+    ui.label(format!("{} indexed files", database.entries.len()));
+    ui.small(format!("root: {}", database.root.display()));
+    if let Some(selected) = &database.selected {
+        ui.separator();
+        ui.monospace(selected.display().to_string());
+    }
 }
