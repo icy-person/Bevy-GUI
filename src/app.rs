@@ -16,7 +16,7 @@ use crate::{
     scene_model::SceneEditorState,
     scene_tools::SceneSelectionSet,
     settings::install_settings,
-    ui::install_editor_ui,
+    ui::{command_palette::install_command_palette, install_editor_ui},
     viewport::install_viewport,
     viewport2d::install_2d_viewport,
 };
@@ -45,6 +45,7 @@ impl Plugin for BevyGuiPlugin {
         install_viewport(app);
         install_2d_viewport(app);
         install_editor_ui(app);
+        install_command_palette(app);
         app.add_systems(PostStartup, load_import_database)
             .add_systems(Startup, register_default_commands)
             .add_systems(Update, execute_editor_commands);
@@ -76,6 +77,7 @@ fn register_default_commands(mut registry: ResMut<EditorCommandRegistry>) {
         ("scene.prefab_create", "Create Prefab", Some("Ctrl+P")),
         ("assets.refresh", "Refresh Assets", Some("F5")),
         ("assets.import", "Import Assets", Some("Ctrl+Shift+I")),
+        ("editor.command_palette", "Command Palette", Some("Ctrl+Shift+P")),
     ] {
         registry.register(EditorCommand {
             id: EditorCommandId(id),

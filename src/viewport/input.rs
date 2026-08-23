@@ -5,12 +5,14 @@ use crate::{
     editor::{EditorUiState, ViewportMode},
     history::TransformHistory,
     project::{EditorMode, ProjectState},
+    ui::command_palette::CommandPaletteState,
 };
 
 pub fn editor_input(
     keys: Res<ButtonInput<KeyCode>>,
     mut project: ResMut<ProjectState>,
     mut editor: ResMut<EditorUiState>,
+    mut palette: ResMut<CommandPaletteState>,
     mut gizmo: ResMut<TransformGizmoSettings>,
     mut history: ResMut<TransformHistory>,
     mut transforms: Query<&mut Transform>,
@@ -43,6 +45,11 @@ pub fn editor_input(
     let shift = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
     let alt = keys.pressed(KeyCode::AltLeft) || keys.pressed(KeyCode::AltRight);
 
+    if ctrl && shift && keys.just_pressed(KeyCode::KeyP) {
+        palette.toggle();
+        return;
+    }
+
     if ctrl && keys.just_pressed(KeyCode::KeyZ) && !shift {
         history.undo(&mut transforms);
         project.dirty = true;
@@ -61,22 +68,22 @@ pub fn editor_input(
     if ctrl && keys.just_pressed(KeyCode::KeyD) {
         bus.emit(EditorCommandId("scene.duplicate"));
     }
-    if ctrl && keys.just_pressed(KeyCode::KeyA) && shift {
+    if ctrl && shift && keys.just_pressed(KeyCode::KeyA) {
         bus.emit(EditorCommandId("scene.new_entity"));
     }
-    if ctrl && keys.just_pressed(KeyCode::KeyB) && shift {
+    if ctrl && shift && keys.just_pressed(KeyCode::KeyB) {
         bus.emit(EditorCommandId("project.export"));
     }
     if ctrl && keys.just_pressed(KeyCode::KeyO) {
         bus.emit(EditorCommandId("scene.open"));
     }
-    if ctrl && keys.just_pressed(KeyCode::KeyP) {
+    if ctrl && !shift && keys.just_pressed(KeyCode::KeyP) {
         bus.emit(EditorCommandId("scene.prefab_create"));
     }
-    if ctrl && keys.just_pressed(KeyCode::KeyI) && shift {
+    if ctrl && shift && keys.just_pressed(KeyCode::KeyI) {
         bus.emit(EditorCommandId("assets.import"));
     }
-    if ctrl && keys.just_pressed(KeyCode::KeyV) && shift {
+    if ctrl && shift && keys.just_pressed(KeyCode::KeyV) {
         bus.emit(EditorCommandId("scene.validate"));
     }
     if keys.just_pressed(KeyCode::F5) {
