@@ -78,7 +78,12 @@ fn viewport_panel(world: &mut World, ui: &mut egui::Ui) {
             changed |= ui.checkbox(&mut placement.enabled, "Enabled").changed();
             changed |= ui.checkbox(&mut placement.snap_to_grid, "Snap to grid").changed();
             changed |= ui
-                .add(egui::DragValue::new(&mut placement.grid_size).prefix("Grid ").speed(0.05).range(0.001..=1000.0))
+                .add(
+                    egui::DragValue::new(&mut placement.grid_size)
+                        .prefix("Grid ")
+                        .speed(0.05)
+                        .range(0.001..=1000.0),
+                )
                 .changed();
             egui::ComboBox::from_label("Axis")
                 .selected_text(match placement.axis {
@@ -102,7 +107,6 @@ fn viewport_panel(world: &mut World, ui: &mut egui::Ui) {
         .default_open(false)
         .show(ui, |ui| {
             if let Some(settings) = settings {
-                ui.add(egui::DragValue::new(&mut settings.camera_move_speed.clone()).speed(0.1));
                 ui.label(format!("Move speed: {:.2}", settings.camera_move_speed));
                 ui.label(format!("Orbit speed: {:.2}", settings.camera_orbit_speed));
                 ui.label(format!("Zoom speed: {:.2}", settings.camera_zoom_speed));
