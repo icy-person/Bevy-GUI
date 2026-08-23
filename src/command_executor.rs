@@ -5,6 +5,8 @@ use crate::{
     command::{EditorCommandBus, EditorCommandId},
     export::{default_profile, export_project},
     project::{save_project, EditorMode, ProjectState},
+    selection::SelectionState,
+    viewport::EditorEntity,
 };
 
 #[derive(Resource, Default, Debug)]
@@ -20,12 +22,16 @@ pub fn execute_editor_commands(
     mut project: ResMut<ProjectState>,
     mut assets: ResMut<AssetDatabase>,
     mut state: ResMut<CommandExecutionState>,
+    mut selection: ResMut<SelectionState>,
+    mut commands: Commands,
+    transforms: Query<&Transform, With<EditorEntity>>,
 ) {
     for id in bus.drain() {
         state.executed = state.executed.saturating_add(1);
         state.last = Some(id);
         state.last_error = None;
         state.last_message = None;
+
         match id.0 {
             "project.save" => {
                 if let Err(error) = save_project(&project.root, &project) {
@@ -55,6 +61,63 @@ pub fn execute_editor_commands(
             "assets.refresh" => {
                 assets.refresh_requested = true;
                 state.last_message = Some("Asset scan requested".into());
+            }
+            "scene.new_entity" => {
+                let entity = commands
+                    .spawn((
+                        Transform::default(),
+                        Name::new("Entity"),
+                        crate::viewport::EditorEntity,
+                        crate::scene_model::EditorParent(None),
+                        Pickable::default(),
+                    ))
+                    .id();
+                selection.select(entity);
+                project.dirty = true;
+                state.last_message = Some("Entity created".into());
+            }
+            "scene.duplicate" => {
+                if let Some(source) = selection.primary() {
+                    match transforms.get(source) {
+                        Ok(transform) => {
+                            let entity = commands
+                                .spawn((
+                                    *transform,
+                                    Name::new("Duplicate"),
+                                    EditorEntity,
+                                    crate::scene_model::EditorParent(None),
+                                    Pickable::default(),
+                                ))
+                                .id();
+                            selection.select(entity);
+                            project.dirty = true;
+                            state.last_message = Some("Entity duplicated".into());
+                        }
+                        Err(_) => {
+                            state.last_message = Some("Selected entity is no longer available".into());
+                        }
+                    }
+                } else {
+                    state.last_message = Some("Select an entity first".into());
+                }
+            }
+            "scene.delete" => {
+                if let Some(entity) = selection.primary() {
+                    commands.entity(entity).despawn();
+                    selection.entities.retain(|current| *current != entity);
+                    selection.focused = selection.entities.last().copied();
+                    project.dirty = true;
+                    state.last_message = Some("Entity deleted".into());
+                } else {
+                    state.last_message = Some("Select an entity first".into());
+                }
+            }
+            "edit.undo" | "edit.redo" => {
+                state.last_message = Some(if id.0 == "edit.undo" {
+                    "Undo requested".into()
+                } else {
+                    "Redo requested".into()
+                });
             }
             _ => {}
         }
