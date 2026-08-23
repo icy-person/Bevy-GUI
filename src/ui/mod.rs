@@ -142,6 +142,7 @@ fn editor_ui_system(mut mut_params: EditorUiParams) -> Result {
     let project_dirty = mut_params.project.dirty;
     let project_mode = mut_params.project.mode;
     let status = mut_params.state.status.clone();
+    let mut rendered_actions: Option<UiActions> = None;
 
     let mut root_ui = egui::Ui::new(
         ctx.clone(),
@@ -194,37 +195,49 @@ fn editor_ui_system(mut mut_params: EditorUiParams) -> Result {
             });
         });
 
-        let actions = UiActions::from(&viewer);
-        let save_requested = actions.save_requested;
-        let mut parents = mut_params.parent_queries.p1();
-        apply_entity_actions(
-            &actions,
-            &mut mut_params.commands,
-            &mut mut_params.selection,
-            &mut mut_params.project,
-            &mut mut_params.history,
-            &mut_params.transforms,
-            &mut parents,
-        );
-        drop(parents);
-
-        if save_requested {
-            let parents = mut_params.parent_queries.p0();
-            let scene_entities: Vec<(Entity, String, Transform, Option<Entity>)> = entities
-                .iter()
-                .filter_map(|(entity, name)| {
-                    let transform = mut_params.transforms.get(*entity).ok().copied()?;
-                    let parent = parents
-                        .get(*entity)
-                        .ok()
-                        .flatten()
-                        .and_then(|parent| parent.0);
-                    Some((*entity, name.clone(), transform, parent))
-                })
-                .collect();
-            save_editor_project(&mut mut_params.project, &mut mut_params.state, &scene_entities);
-        }
+        rendered_actions = Some(UiActions::from(&viewer));
     });
+
+    let actions = rendered_actions.unwrap_or_else(|| UiActions {
+        create_entity: false,
+        delete_entity: None,
+        duplicate_entity: None,
+        save_requested: false,
+        transform_edit: None,
+        name_edit: None,
+        parent_selected: false,
+        unparent_selected: false,
+    });
+    let save_requested = actions.save_requested;
+
+    let mut parents = mut_params.parent_queries.p1();
+    apply_entity_actions(
+        &actions,
+        &mut mut_params.commands,
+        &mut mut_params.selection,
+        &mut mut_params.project,
+        &mut mut_params.history,
+        &mut_params.transforms,
+        &mut parents,
+    );
+    drop(parents);
+
+    if save_requested {
+        let parents = mut_params.parent_queries.p0();
+        let scene_entities: Vec<(Entity, String, Transform, Option<Entity>)> = entities
+            .iter()
+            .filter_map(|(entity, name)| {
+                let transform = mut_params.transforms.get(*entity).ok().copied()?;
+                let parent = parents
+                    .get(*entity)
+                    .ok()
+                    .flatten()
+                    .and_then(|parent| parent.0);
+                Some((*entity, name.clone(), transform, parent))
+            })
+            .collect();
+        save_editor_project(&mut mut_params.project, &mut mut_params.state, &scene_entities);
+    }
 
     Ok(())
 }
