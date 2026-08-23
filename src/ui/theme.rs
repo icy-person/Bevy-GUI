@@ -62,16 +62,18 @@ fn apply_light_palette(visuals: &mut egui::Visuals) {
     visuals.faint_bg_color = egui::Color32::from_rgb(232, 228, 234);
     visuals.override_text_color = Some(egui::Color32::from_rgb(38, 35, 40));
     visuals.widgets.inactive.bg_fill = egui::Color32::from_rgb(235, 231, 237);
-    visuals.widgets.inactive.fg_stroke = egui::Stroke::new(1.0, egui::Color32::from_rgb(78, 73, 80));
+    visuals.widgets.inactive.fg_stroke =
+        egui::Stroke::new(1.0, egui::Color32::from_rgb(78, 73, 80));
     visuals.widgets.hovered.bg_fill = egui::Color32::from_rgb(224, 218, 227);
     visuals.widgets.active.bg_fill = egui::Color32::from_rgb(212, 205, 217);
     visuals.widgets.open.bg_fill = egui::Color32::from_rgb(224, 218, 227);
 }
 
 pub fn surface(ui: &mut egui::Ui, add_contents: impl FnOnce(&mut egui::Ui)) {
+    let stroke_color = ui.style().visuals.widgets.inactive.fg_stroke.color.gamma_multiply(0.35);
     egui::Frame::group(ui.style())
         .fill(ui.style().visuals.widgets.inactive.bg_fill)
-        .stroke(egui::Stroke::new(1.0, ui.style().visuals.widgets.noninteractive.fg_stroke.color.gamma_multiply(0.35)))
+        .stroke(egui::Stroke::new(1.0, stroke_color))
         .inner_margin(egui::Margin::same(12))
         .show(ui, add_contents);
 }
