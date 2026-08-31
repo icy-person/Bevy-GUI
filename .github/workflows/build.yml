@@ -1,6 +1,10 @@
 name: build
 
 on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
     inputs:
       profile:
@@ -8,84 +12,69 @@ on:
         required: true
         default: release
         type: choice
-        options:
-          - release
-          - debug
+        options: [release, debug]
 
 jobs:
-  build-linux-x86_64:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Install native dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            pkg-config \
-            libasound2-dev \
-            libudev-dev \
-            libx11-dev \
-            libxi-dev \
-            libxrandr-dev \
-            libxcursor-dev \
-            libxinerama-dev \
-            libwayland-dev
-
+          sudo apt-get install -y pkg-config libasound2-dev libudev-dev libx11-dev libxi-dev libxrandr-dev libxcursor-dev libxinerama-dev libwayland-dev
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-
       - name: Cache
         uses: Swatinem/rust-cache@v2
-
-      - name: Format sources
-        run: cargo fmt --all
-
-      - name: Verify formatting
+      - name: Format check
         run: cargo fmt --all -- --check
+      - name: Check all targets
+        run: cargo check --all-targets --all-features
+      - name: Test all targets
+        run: cargo test --all-targets --all-features
+      - name: Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
 
+  build-linux-x86_64:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libasound2-dev libudev-dev libx11-dev libxi-dev libxrandr-dev libxcursor-dev libxinerama-dev libwayland-dev
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Cache
+        uses: Swatinem/rust-cache@v2
       - name: Build editor
         shell: bash
         run: |
           set -euo pipefail
-          PROFILE="${{ inputs.profile }}"
-          if [ "$PROFILE" = "release" ]; then
-            cargo build --release --bin bevy-gui
-          else
-            cargo build --bin bevy-gui
-          fi
-
-      - name: Run tests
-        run: cargo test --all-targets
-
+          PROFILE="${{ inputs.profile || 'release' }}"
+          if [ "$PROFILE" = "release" ]; then cargo build --release --bin bevy-gui; else cargo build --bin bevy-gui; fi
       - name: Prepare bundle
         shell: bash
         run: |
           set -euo pipefail
-          PROFILE="${{ inputs.profile }}"
+          PROFILE="${{ inputs.profile || 'release' }}"
           DIST="dist/bevy-gui-linux-x86_64-${PROFILE}"
           mkdir -p "$DIST"
-          if [ "$PROFILE" = "release" ]; then
-            cp target/release/bevy-gui "$DIST/"
-          else
-            cp target/debug/bevy-gui "$DIST/"
-          fi
+          if [ "$PROFILE" = "release" ]; then cp target/release/bevy-gui "$DIST/"; else cp target/debug/bevy-gui "$DIST/"; fi
           chmod +x "$DIST/bevy-gui"
           cp README.md "$DIST/README.md"
-          if [ -f LICENSE ]; then
-            cp LICENSE "$DIST/LICENSE"
-          fi
+          [ ! -f LICENSE ] || cp LICENSE "$DIST/LICENSE"
           tar -C dist -czf "bevy-gui-linux-x86_64-${PROFILE}.tar.gz" "bevy-gui-linux-x86_64-${PROFILE}"
-
       - name: Upload editor artifact
         uses: actions/upload-artifact@v4
         with:
-          name: bevy-gui-linux-x86_64-${{ inputs.profile }}
+          name: bevy-gui-linux-x86_64-${{ inputs.profile || 'release' }}
           path: |
-            bevy-gui-linux-x86_64-${{ inputs.profile }}.tar.gz
-            dist/bevy-gui-linux-x86_64-${{ inputs.profile }}
+            bevy-gui-linux-x86_64-${{ inputs.profile || 'release' }}.tar.gz
+            dist/bevy-gui-linux-x86_64-${{ inputs.profile || 'release' }}
           if-no-files-found: error
           retention-days: 14
