@@ -3,7 +3,6 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum EngineFeature { SceneEditor, EcsInspector, SystemGraph, EventMonitor, QueryVisualizer, StateEditor, Animation, VisualScripting, ShaderGraph, AssetBrowser, PluginBrowser, Terminal, Lsp, Git, Profiler }
-
 #[derive(Resource, Debug, Clone)]
 pub struct EngineFeatureRegistry { enabled: BTreeSet<EngineFeature> }
 impl Default for EngineFeatureRegistry { fn default()->Self{Self{enabled:[EngineFeature::SceneEditor,EngineFeature::EcsInspector,EngineFeature::SystemGraph,EngineFeature::EventMonitor,EngineFeature::QueryVisualizer,EngineFeature::StateEditor,EngineFeature::Animation,EngineFeature::VisualScripting,EngineFeature::ShaderGraph,EngineFeature::AssetBrowser,EngineFeature::Profiler].into_iter().collect()}} }
@@ -30,16 +29,16 @@ impl Plugin for EngineFeaturesPlugin{fn build(&self,app:&mut App){app.init_resou
 
 fn strings(values:&[&str])->Vec<String>{values.iter().map(|value|(*value).to_owned()).collect()}
 fn register_engine_graph(mut graph:ResMut<EngineGraphRegistry>){
-    let entries=[
-        ("engine.initialize_paths","Startup",["ProjectState"],["EnginePaths"]),
-        ("engine.load_scene","Startup",["EngineRuntimeConfig","AssetServer"],["World"]),
-        ("engine.execute_commands","Update",["EditorCommandBus","ProjectState"],["CommandExecutionState"]),
-        ("engine.sync_play_mode","Update",["ProjectState","EditorEntities"],["PlaySession","RuntimeEntities"]),
-        ("engine.animation","Update",["AnimationLibrary","Time"],["Transform"]),
-        ("engine.visual_scripting","Update",["VisualScriptAsset","Time"],["World"]),
-        ("engine.diagnostics","PostUpdate",["EditorEntity","CommandExecutionState"],["EngineDiagnostics"]),
+    let entries: &[(&str,&str,&[&str],&[&str])] = &[
+        ("engine.initialize_paths","Startup",&["ProjectState"],&["EnginePaths"]),
+        ("engine.load_scene","Startup",&["EngineRuntimeConfig","AssetServer"],&["World"]),
+        ("engine.execute_commands","Update",&["EditorCommandBus","ProjectState"],&["CommandExecutionState"]),
+        ("engine.sync_play_mode","Update",&["ProjectState","EditorEntities"],&["PlaySession","RuntimeEntities"]),
+        ("engine.animation","Update",&["AnimationLibrary","Time"],&["Transform"]),
+        ("engine.visual_scripting","Update",&["VisualScriptAsset","Time"],&["World"]),
+        ("engine.diagnostics","PostUpdate",&["EditorEntity","CommandExecutionState"],&["EngineDiagnostics"]),
     ];
-    for (name,schedule,reads,writes) in entries { graph.register(EngineSystemInfo{name:name.into(),schedule:schedule.into(),reads:strings(&reads),writes:strings(&writes),after:Vec::new(),before:Vec::new()}); }
+    for (name,schedule,reads,writes) in entries{graph.register(EngineSystemInfo{name:(*name).into(),schedule:(*schedule).into(),reads:strings(reads),writes:strings(writes),after:Vec::new(),before:Vec::new()});}
 }
 
 fn collect_engine_diagnostics(mut diagnostics:ResMut<EngineDiagnostics>,entities:Query<(),With<crate::viewport::EditorEntity>>,drawables:Query<(),(With<crate::viewport::EditorEntity>,Or<(With<Mesh3d>,With<Camera3d>,With<DirectionalLight>,With<PointLight>,With<SpotLight>)>)>,commands:Option<Res<crate::command_executor::CommandExecutionState>>,events:Option<Res<EngineEventMonitor>>){diagnostics.frames=diagnostics.frames.saturating_add(1);diagnostics.entities=entities.iter().count().min(u32::MAX as usize)as u32;diagnostics.drawables=drawables.iter().count().min(u32::MAX as usize)as u32;if let Some(state)=commands{diagnostics.commands_executed=state.executed;}if let Some(event_monitor)=events{diagnostics.assets_loaded=event_monitor.iter().filter(|event|event.kind=="asset.loaded").count()as u64;diagnostics.asset_failures=event_monitor.iter().filter(|event|event.kind=="asset.failed").count()as u64;}}
