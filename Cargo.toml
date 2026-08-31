@@ -11,14 +11,16 @@ bevy = { version = "0.19", default-features = false, features = ["2d", "3d", "ui
 bevy_egui = "0.41.1"
 egui = "0.35"
 egui_dock = "0.20.1"
+jackdaw_feathers = { git = "https://github.com/jbuehler23/jackdaw.git", branch = "main" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
 tracing = "0.1"
 
 [features]
-default = ["native-editor"]
+default = ["native-editor", "jackdaw-ui"]
 native-editor = []
+jackdaw-ui = []
 
 [profile.dev]
 opt-level = 1
