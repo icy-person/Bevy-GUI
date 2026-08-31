@@ -1,0 +1,26 @@
+[package]
+name = "bevy-gui-mobile"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+name = "bevy_gui_mobile"
+crate-type = ["staticlib", "cdylib"]
+
+[dependencies]
+bevy-gui = { path = ".." }
+bevy = { version = "0.19", default-features = false, features = ["android-game-activity", "3d", "bevy_asset", "bevy_gltf"] }
+
+[package.metadata.android]
+package = "dev.bevygui.engine"
+apk_name = "BevyGUI"
+assets = "../assets"
+strip = "strip"
+build_targets = ["aarch64-linux-android"]
+
+[package.metadata.android.sdk]
+target_sdk_version = 35
+
+[package.metadata.android.application]
+label = "Bevy-GUI Game"
