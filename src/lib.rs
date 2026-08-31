@@ -1,7 +1,7 @@
 //! Bevy-GUI: a plugin-first editor platform for Bevy.
 //! The editor is split into project, scene, prefab, asset, component, viewport,
-//! runtime, command and UI subsystems. Each subsystem owns real state and
-//! persistence APIs so editor features can be extended without a monolithic UI.
+//! runtime and UI subsystems. The engine layer provides shared paths, settings
+//! and a Play-In-Editor runtime bridge while authored scenes remain persistent.
 
 pub mod app;
 pub mod asset_pipeline;
@@ -11,6 +11,7 @@ pub mod command_executor;
 pub mod component_registry;
 pub mod docking;
 pub mod editor;
+pub mod engine;
 pub mod export;
 pub mod history;
 pub mod jackdaw_ui;
@@ -37,13 +38,14 @@ pub use command_executor::CommandExecutionState;
 pub use component_registry::{ComponentDescriptor, ComponentKind, ComponentRegistry, PropertyDescriptor, PropertyKind};
 pub use docking::{EditorDockState, EditorTab};
 pub use editor::{EditorPanel, EditorPanelContext, EditorPlugin, EditorPluginRegistry, ViewportMode};
+pub use engine::{EnginePaths, EnginePlugin, EngineSettings, RuntimeEntity};
 pub use export::{default_profile, export_project, ExportError, ExportProfile, ExportReport};
 pub use history::{TransformHistory, TransformSnapshot};
 pub use jackdaw_ui::JackdawUiPlugin;
 pub use panel::{PanelId, PanelRegistry};
 pub use prefab::{load_prefab, prefab_path, save_prefab, spawn_prefab, PrefabDocument, PrefabInstanceOptions, PrefabIoError, PrefabNode};
 pub use profiler::EditorProfiler;
-pub use project::{create_project, load_project, project_file, save_project, ProjectIoError, ProjectManifest, ProjectState};
+pub use project::{create_project, load_project, project_file, save_project, EditorMode, ProjectIoError, ProjectManifest, ProjectState};
 pub use runtime::PlaySession;
 pub use scene::{load_scene, save_scene, spawn_scene, SceneDocument, SceneEntity, SceneIoError, SceneNode};
 pub use scene_model::{EditorParent, SceneEditorState, SceneNodeModel};
