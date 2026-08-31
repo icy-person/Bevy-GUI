@@ -7,6 +7,7 @@ use crate::{
     export::{default_profile, export_project},
     prefab::{prefab_path, save_prefab, PrefabDocument},
     project::{save_project, EditorMode, ProjectState},
+    scene::{EditorPrimitive, ScenePrimitive},
     scene::{load_scene, SceneEntity},
     scene_tools::validate_scene,
     scene_model::EditorParent,
@@ -92,44 +93,35 @@ pub fn execute_editor_commands(
                 }
             }
             "scene.prefab_create" => create_prefab(&project, &selection, &transforms, &names, &mut state),
-            "scene.new_entity" => {
-                let entity = commands.spawn((Transform::default(), Name::new("Entity"), Visibility::Inherited, EditorEntity, EditorParent(None), Pickable::default())).id();
-                selection.select(entity);
-                project.dirty = true;
-                state.last_message = Some("Entity created".into());
-            }
+            "scene.new_entity" => spawn_editor_entity(&mut commands, &mut selection, &mut project, &mut state, "Entity", None, Transform::default()),
             "scene.new_cube" => {
                 let position = cursor.position_or_zero();
-                let mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
-                let material = materials.add(StandardMaterial { base_color: Color::srgb(0.35, 0.55, 0.95), metallic: 0.05, perceptual_roughness: 0.55, ..default() });
-                let entity = commands.spawn((Mesh3d(mesh), MeshMaterial3d(material), Transform::from_translation(position), Name::new("Cube"), Visibility::Inherited, EditorEntity, EditorParent(None), Pickable::default())).id();
-                selection.select(entity);
-                project.dirty = true;
-                state.last_message = Some(format!("Cube created at ({:.2}, {:.2}, {:.2})", position.x, position.y, position.z));
+                spawn_editor_entity(&mut commands, &mut selection, &mut project, &mut state, "Cube", Some(ScenePrimitive::Cube), Transform::from_translation(position));
             }
             "scene.new_plane" => {
                 let position = cursor.position_or_zero();
-                let mesh = meshes.add(Plane3d::default().mesh().size(2.0, 2.0));
-                let material = materials.add(StandardMaterial { base_color: Color::srgb(0.22, 0.72, 0.38), metallic: 0.0, perceptual_roughness: 0.85, ..default() });
-                let entity = commands.spawn((Mesh3d(mesh), MeshMaterial3d(material), Transform::from_translation(position), Name::new("Plane"), Visibility::Inherited, EditorEntity, EditorParent(None), Pickable::default())).id();
-                selection.select(entity);
-                project.dirty = true;
-                state.last_message = Some(format!("Plane created at ({:.2}, {:.2}, {:.2})", position.x, position.y, position.z));
+                spawn_editor_entity(&mut commands, &mut selection, &mut project, &mut state, "Plane", Some(ScenePrimitive::Plane), Transform::from_translation(position));
+            }
+            "scene.new_sphere" => {
+                let position = cursor.position_or_zero();
+                spawn_editor_entity_with_assets(&mut commands, &mut selection, &mut project, &mut state, &mut meshes, &mut materials, "Sphere", ScenePrimitive::Sphere, Transform::from_translation(position));
+            }
+            "scene.new_capsule" => {
+                let position = cursor.position_or_zero();
+                spawn_editor_entity_with_assets(&mut commands, &mut selection, &mut project, &mut state, &mut meshes, &mut materials, "Capsule", ScenePrimitive::Capsule, Transform::from_translation(position));
             }
             "scene.duplicate" => {
                 if let Some(source) = selection.primary() {
                     match transforms.get(source) {
                         Ok(transform) => {
-                            let entity = commands.spawn((*transform, Name::new("Duplicate"), Visibility::Inherited, EditorEntity, EditorParent(None), Pickable::default())).id();
+                            let entity = commands.spawn((*transform, Name::new("Duplicate"), EditorPrimitive(ScenePrimitive::None), Visibility::Inherited, EditorEntity, EditorParent(None), Pickable::default())).id();
                             selection.select(entity);
                             project.dirty = true;
                             state.last_message = Some("Entity duplicated".into());
                         }
                         Err(_) => state.last_error = Some("Selected entity is no longer available".into()),
                     }
-                } else {
-                    state.last_message = Some("Select an entity first".into());
-                }
+                } else { state.last_message = Some("Select an entity first".into()); }
             }
             "scene.delete" => {
                 if let Some(entity) = selection.primary() {
@@ -146,29 +138,7 @@ pub fn execute_editor_commands(
     }
 }
 
-fn create_prefab(
-    project: &ProjectState,
-    selection: &SelectionState,
-    transforms: &Query<&Transform, With<EditorEntity>>,
-    names: &Query<(Entity, Option<&Name>, Option<&EditorParent>, Option<&Visibility>), With<EditorEntity>>,
-    state: &mut CommandExecutionState,
-) {
-    if selection.entities.is_empty() { state.last_error = Some("Select one or more entities before creating a prefab".into()); return; }
-    let selected: std::collections::BTreeSet<_> = selection.entities.iter().copied().collect();
-    let mut snapshot = Vec::<(Entity, String, Transform, Option<Entity>, bool)>::new();
-    for entity in &selection.entities {
-        let Ok((_, name, parent, visibility)) = names.get(*entity) else { continue };
-        let Ok(transform) = transforms.get(*entity) else { continue };
-        let parent = parent.and_then(|value| value.0).filter(|parent| selected.contains(parent));
-        let visible = visibility.map(|value| !matches!(value, Visibility::Hidden)).unwrap_or(true);
-        snapshot.push((*entity, name.map(|value| value.as_str().to_owned()).unwrap_or_else(|| "Entity".into()), *transform, parent, visible));
-    }
-    if snapshot.is_empty() { state.last_error = Some("Selected entities are no longer available".into()); return; }
-    let base = project.name.trim().replace(' ', "_");
-    let mut path = prefab_path(&project.root, &format!("{base}_Prefab"));
-    let mut suffix = 1u32;
-    while path.exists() { path = prefab_path(&project.root, &format!("{base}_Prefab_{suffix}")); suffix += 1; }
-    let prefab_name = path.file_stem().and_then(|value| value.to_str()).unwrap_or("Prefab");
-    let prefab = PrefabDocument::from_scene_entities(prefab_name, snapshot);
-    match save_prefab(&path, &prefab) { Ok(()) => state.last_message = Some(format!("Created prefab {}", path.display())), Err(error) => state.last_error = Some(error.to_string()) }
-}
+fn spawn_editor_entity(commands:&mut Commands,selection:&mut SelectionState,project:&mut ProjectState,state:&mut CommandExecutionState,name:&str,primitive:Option<ScenePrimitive>,transform:Transform){let entity=commands.spawn((transform,Name::new(name),Visibility::Inherited,EditorEntity,EditorParent(None),Pickable::default(),EditorPrimitive(primitive.unwrap_or(ScenePrimitive::None)))).id();selection.select(entity);project.dirty=true;state.last_message=Some(format!("{name} created"));}
+fn spawn_editor_entity_with_assets(commands:&mut Commands,selection:&mut SelectionState,project:&mut ProjectState,state:&mut CommandExecutionState,meshes:&mut Assets<Mesh>,materials:&mut Assets<StandardMaterial>,name:&str,primitive:ScenePrimitive,transform:Transform){let mesh=match primitive{ScenePrimitive::Sphere=>meshes.add(Sphere::new(0.5).mesh().uv(24,16)),ScenePrimitive::Capsule=>meshes.add(Capsule3d::new(0.35,0.8)),_=>meshes.add(Cuboid::new(1.0,1.0,1.0))};let material=materials.add(StandardMaterial{base_color:Color::srgb(0.8,0.4,0.2),perceptual_roughness:0.5,..default()});let entity=commands.spawn((Mesh3d(mesh),MeshMaterial3d(material),transform,Name::new(name),Visibility::Inherited,EditorEntity,EditorParent(None),Pickable::default(),EditorPrimitive(primitive))).id();selection.select(entity);project.dirty=true;state.last_message=Some(format!("{name} created"));}
+
+fn create_prefab(project:&ProjectState,selection:&SelectionState,transforms:&Query<&Transform,With<EditorEntity>>,names:&Query<(Entity,Option<&Name>,Option<&EditorParent>,Option<&Visibility>),With<EditorEntity>>,state:&mut CommandExecutionState){if selection.entities.is_empty(){state.last_error=Some("Select one or more entities before creating a prefab".into());return;}let selected:std::collections::BTreeSet<_>=selection.entities.iter().copied().collect();let mut snapshot=Vec::<(Entity,String,Transform,Option<Entity>,bool)>::new();for entity in &selection.entities{let Ok((_,name,parent,visibility))=names.get(*entity)else{continue};let Ok(transform)=transforms.get(*entity)else{continue};let parent=parent.and_then(|value|value.0).filter(|parent|selected.contains(parent));let visible=visibility.map(|value|!matches!(value,Visibility::Hidden)).unwrap_or(true);snapshot.push((*entity,name.map(|value|value.as_str().to_owned()).unwrap_or_else(||"Entity".into()),*transform,parent,visible));}if snapshot.is_empty(){state.last_error=Some("Selected entities are no longer available".into());return;}let base=project.name.trim().replace(' ','_');let mut path=prefab_path(&project.root,&format!("{base}_Prefab"));let mut suffix=1u32;while path.exists(){path=prefab_path(&project.root,&format!("{base}_Prefab_{suffix}"));suffix+=1;}let prefab_name=path.file_stem().and_then(|value|value.to_str()).unwrap_or("Prefab");let prefab=PrefabDocument::from_scene_entities(prefab_name,snapshot);match save_prefab(&path,&prefab){Ok(())=>state.last_message=Some(format!("Created prefab {}",path.display())),Err(error)=>state.last_error=Some(error.to_string())}}
