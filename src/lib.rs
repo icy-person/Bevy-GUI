@@ -13,6 +13,7 @@ pub mod editor;
 pub mod engine;
 pub mod engine_features;
 pub mod engine_runtime;
+pub mod engine_tools_ui;
 pub mod export;
 pub mod game;
 pub mod history;
@@ -44,6 +45,7 @@ pub use editor::{EditorPanel, EditorPanelContext, EditorPlugin, EditorPluginRegi
 pub use engine::{load_runtime_scene, project_engine_paths, EnginePaths, EnginePlugin, EngineRuntimeConfig, EngineRuntimePlugin, EngineSettings, RuntimeEntity};
 pub use engine_features::{EngineDiagnostics, EngineEventMonitor, EngineEventRecord, EngineFeature, EngineFeatureRegistry, EngineFeaturesPlugin, EngineGraphRegistry, EngineSystemInfo};
 pub use engine_runtime::{EngineClock, EngineFrameBudget, EngineFrameEvent, EngineRuntimeCorePlugin};
+pub use engine_tools_ui::{EngineToolsTab, EngineToolsUiPlugin, EngineToolsUiState};
 pub use game::{build_game_app, GameConfig};
 pub use history::{TransformHistory, TransformSnapshot};
 pub use input::{EngineAction, EngineActionEvent, EngineInputMap, EngineInputPlugin};
@@ -53,7 +55,7 @@ pub use prefab::{load_prefab, prefab_path, save_prefab, spawn_prefab, PrefabDocu
 pub use profiler::EditorProfiler;
 pub use project::{create_project, load_project, project_file, save_project, EditorMode, ProjectIoError, ProjectManifest, ProjectState};
 pub use runtime::PlaySession;
-pub use scene::{load_scene, load_scene as load_authored_scene, save_scene, spawn_scene, spawn_scene_with_renderables, EditorPrimitive, SceneDocument, SceneEntity, SceneIoError, SceneNode, ScenePrimitive, SceneVisual};
+pub use scene::{load_scene, load_scene as load_authored_scene, save_scene, spawn_scene, spawn_scene_with_renderables, EditorPrimitive, SceneBody, SceneDocument, SceneEntity, SceneIoError, SceneNode, SceneNodeKind, ScenePrimitive, SceneVisual};
 pub use scene_model::{EditorParent, SceneEditorState, SceneNodeModel};
 pub use scene_tools::{delete_subtree, duplicate_subtree, reparent_entity, validate_scene, SceneSelectionSet, SceneTool, SceneValidationReport};
 pub use selection::SelectionState;
