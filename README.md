@@ -1,8 +1,42 @@
 # Bevy-GUI
 
-Bevy-GUI is a plugin-first game-editor platform built on Bevy 0.19. The editor is organized as independent subsystems so project management, scene authoring, UI, runtime control and build/export can evolve without a monolithic editor file.
+Bevy-GUI is a plugin-first **game-engine + editor platform** built on Bevy 0.19. It combines a persistent scene authoring environment with a reusable runtime foundation, asset pipeline, diagnostics services, docking workspace and Bevy-native UI integration.
 
-## Real editor capabilities
+The project deliberately follows ideas proven by Bevy-focused tools such as Jackdaw and BerryCode while keeping the engine/editor code owned by this repository. Jackdaw contributes the direction of native Bevy editor widgets, modular panels, reflection-friendly inspector editing and a document/ECS synchronization model. BerryCode contributes the IDE-oriented direction: Scene Editor, ECS Inspector, System Graph, Event Monitor, Asset workflow, animation/shader/visual-scripting tooling and Bevy-native development workflow. BerryCode currently targets Bevy 0.18, so it is used as an architectural reference rather than a direct dependency in the Bevy 0.19 engine.
+
+## Engine architecture
+
+```text
+Bevy 0.19
+   │
+   ├── Engine runtime services
+   │   ├── EngineSettings
+   │   ├── EnginePaths
+   │   ├── EngineRuntimePlugin
+   │   └── load_runtime_scene()
+   │
+   ├── Authoring/editor services
+   │   ├── SceneDocument / SceneEntity
+   │   ├── Prefab system
+   │   ├── Selection + history
+   │   ├── Asset database/import pipeline
+   │   └── Viewport + gizmos
+   │
+   ├── Tooling services
+   │   ├── EngineFeatureRegistry
+   │   ├── EngineEventMonitor
+   │   ├── EngineGraphRegistry
+   │   └── EngineDiagnostics
+   │
+   └── UI
+       ├── Bevy Feathers / Jackdaw native widgets
+       ├── egui compatibility shell
+       └── Docking workspace
+```
+
+The engine layer intentionally does not require the editor UI. `EngineRuntimePlugin` owns runtime paths/settings, while `BevyGuiPlugin` adds editor services on top. This makes the direction suitable for generated standalone games as well as the desktop editor.
+
+## Current editor capabilities
 
 - Material 3-inspired Welcome / Project Manager
 - New Project creates a persistent runnable Bevy project on disk
@@ -26,14 +60,23 @@ Bevy-GUI is a plugin-first game-editor platform built on Bevy 0.19. The editor i
 - Live profiler with FPS and frame-time statistics
 - Plugin and panel registries with live service diagnostics
 - Export pipeline capable of invoking `cargo build --release` and packaging the runtime executable, scene and assets
-- Manual Linux x86_64 release/debug build workflow
 - Jackdaw Feathers integration for Bevy-native inspector text fields and event-driven editing
+- Engine feature registry for Scene Editor, ECS Inspector, System Graph, Event Monitor, Query Visualizer, State Editor, Animation, Visual Scripting, Shader Graph, Asset Browser and Profiler services
+- Bounded runtime event monitor and engine diagnostics resources suitable for live tooling
+- Engine graph metadata registry for system dependency visualization
+- Standalone runtime plugin and explicit authored-scene loading API
 
-## Jackdaw GUI integration
+## BerryCode-inspired engine tooling
 
-The editor now includes a small compatibility layer in `src/jackdaw_ui.rs` that adopts the current Jackdaw editor's native Bevy UI approach without replacing the existing egui shell. It uses the upstream `jackdaw_feathers` widgets and installs an Inspector bridge with editable `Name` and `Transform.translation.x` fields.
+BerryCode's current architecture is particularly useful as a product-level reference because it treats Bevy as the game engine itself rather than merely a library. Its documented feature set includes a Unity-class Scene Editor, ECS Inspector, System Graph, Event Monitor, Query Visualizer, State Editor, templates, plugin discovery, Animation System, Visual Scripting and Shader Graph. citehttps://github.com/KyosukeIshizu1008/berryscode
 
-The integration is intentionally incremental: the current docking, scene, asset and viewport systems remain intact while Jackdaw's Feathers widgets can be introduced panel-by-panel. This follows the same direction as Jackdaw's current architecture: Bevy-native plugins, reflection-friendly field bindings, event-driven edits, and modular editor subsystems.
+Bevy-GUI uses those ideas as engine/editor service boundaries. The implementation remains incremental: the current repository already has the scene, asset, selection, command, viewport, runtime and UI foundations; the feature registry gives the next editor panels stable service identities instead of forcing them into one monolithic UI.
+
+## Jackdaw integration
+
+The current Jackdaw integration follows the newer Bevy-native GUI direction. The upstream editor exposes dedicated Feathers widgets such as buttons, dialogs, inspector fields, numeric inputs, tree views, panels and text editing; Bevy-GUI consumes the `jackdaw_feathers` widget layer through `src/jackdaw_ui.rs` while keeping the existing egui shell and docking system. citehttps://github.com/jbuehler23/jackdaw
+
+The integration is intentionally incremental so panels can migrate one at a time rather than forcing an all-or-nothing UI rewrite.
 
 ## Source layout
 
@@ -41,60 +84,30 @@ The integration is intentionally incremental: the current docking, scene, asset 
 src/
 ├── app.rs
 ├── lib.rs
+├── engine.rs
+├── engine_features.rs
 ├── jackdaw_ui.rs
 ├── command.rs
 ├── command_executor.rs
+├── component_registry.rs
 ├── editor.rs
 ├── export.rs
 ├── history.rs
-├── panel.rs
 ├── profiler.rs
 ├── project.rs
 ├── runtime.rs
 ├── scene.rs
 ├── scene_model.rs
+├── scene_tools.rs
 ├── selection.rs
 │
 ├── assets/
-│   ├── mod.rs
-│   └── database.rs
-│
 ├── docking/
-│   ├── mod.rs
-│   ├── state.rs
-│   └── viewer.rs
-│
 ├── settings/
-│   └── mod.rs
-│
 ├── ui/
-│   ├── mod.rs
-│   ├── actions.rs
-│   ├── assets.rs
-│   ├── persistence.rs
-│   ├── settings.rs
-│   ├── theme.rs
-│   ├── welcome.rs
-│   └── workspace.rs
-│
 ├── viewport/
-│   ├── mod.rs
-│   ├── components.rs
-│   ├── scene.rs
-│   ├── input.rs
-│   ├── gizmo.rs
-│   └── runtime.rs
-│
 ├── viewport2d/
-│   └── mod.rs
-│
 └── plugins/
-    ├── mod.rs
-    ├── scene.rs
-    ├── viewport.rs
-    ├── inspector.rs
-    ├── assets.rs
-    └── console.rs
 ```
 
 ## Keyboard authoring
