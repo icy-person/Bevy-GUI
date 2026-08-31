@@ -1,82 +1,93 @@
 # Bevy-GUI
 
-Bevy-GUI is a plugin-first **game-engine + editor platform** built on Bevy 0.19. It combines a persistent scene authoring environment with a reusable runtime foundation, asset pipeline, diagnostics services, docking workspace and Bevy-native UI integration.
+Bevy-GUI is a plugin-first **game-engine + visual editor platform** built on Bevy 0.19. It combines a persistent scene authoring environment with a reusable runtime foundation, physics, gameplay input, animation, shader-graph and visual-scripting services, asset tooling, diagnostics and a Bevy-native/egui editor shell.
 
-The project deliberately follows ideas proven by Bevy-focused tools such as Jackdaw and BerryCode while keeping the engine/editor code owned by this repository. Jackdaw contributes the direction of native Bevy editor widgets, modular panels, reflection-friendly inspector editing and a document/ECS synchronization model. BerryCode contributes the IDE-oriented direction: Scene Editor, ECS Inspector, System Graph, Event Monitor, Asset workflow, animation/shader/visual-scripting tooling and Bevy-native development workflow. BerryCode currently targets Bevy 0.18, so it is used as an architectural reference rather than a direct dependency in the Bevy 0.19 engine.
+The architecture deliberately incorporates ideas from Bevy-focused tools such as Jackdaw and BerryCode while keeping implementation owned by this repository. Jackdaw is the reference for native Bevy widgets, modular panels, reflection-friendly editing and document/ECS synchronization. BerryCode is the reference for the broader Bevy-first IDE workflow: Scene Editor, ECS Inspector, System Graph, Event Monitor, Query Visualizer, Animation, Shader Graph, Visual Scripting and development tooling. BerryCode currently targets Bevy 0.18, so it is not a direct dependency of this Bevy 0.19 project.
 
 ## Engine architecture
 
 ```text
 Bevy 0.19
    │
-   ├── Engine runtime services
-   │   ├── EngineSettings
-   │   ├── EnginePaths
-   │   ├── EngineRuntimePlugin
-   │   └── load_runtime_scene()
+   ├── Engine runtime
+   │   ├── EngineRuntimePlugin / GameConfig
+   │   ├── EngineClock / frame service
+   │   ├── Avian 3D physics
+   │   ├── Gameplay input actions
+   │   ├── Animation runtime
+   │   ├── ShaderGraph model
+   │   └── VisualScripting model
    │
-   ├── Authoring/editor services
-   │   ├── SceneDocument / SceneEntity
-   │   ├── Prefab system
-   │   ├── Selection + history
+   ├── Authoring
+   │   ├── SceneDocument
+   │   ├── Mesh / primitive / material metadata
+   │   ├── Prefabs
+   │   ├── Selection + transform history
    │   ├── Asset database/import pipeline
-   │   └── Viewport + gizmos
+   │   └── 2D/3D viewport + gizmos
    │
-   ├── Tooling services
-   │   ├── EngineFeatureRegistry
-   │   ├── EngineEventMonitor
-   │   ├── EngineGraphRegistry
-   │   └── EngineDiagnostics
+   ├── Editor services
+   │   ├── Inspector
+   │   ├── Hierarchy
+   │   ├── Docking
+   │   ├── Command bus
+   │   ├── System graph
+   │   ├── Event monitor
+   │   └── Diagnostics/profiler
    │
    └── UI
        ├── Bevy Feathers / Jackdaw native widgets
        ├── egui compatibility shell
-       └── Docking workspace
+       └── dockable workspace
 ```
 
-The engine layer intentionally does not require the editor UI. `EngineRuntimePlugin` owns runtime paths/settings, while `BevyGuiPlugin` adds editor services on top. This makes the direction suitable for generated standalone games as well as the desktop editor.
+The key separation is that `EngineRuntimePlugin` can be used without the editor. `BevyGuiPlugin` layers authoring and GUI services over the same engine/runtime APIs, allowing generated projects to remain standalone.
 
-## Current editor capabilities
+## Current engine/editor capabilities
 
-- Material 3-inspired Welcome / Project Manager
-- New Project creates a persistent runnable Bevy project on disk
-- Generated project contains `project.godot-rs.json`, `Cargo.toml`, `src/main.rs`, `scenes/`, `assets/` and `.bevy-gui/`
-- Open Project loads the real manifest and project root
+- Bevy 0.19 engine foundation
+- Standalone `build_game_app(GameConfig)` API
+- Runtime `.scene.json` loader
+- Persistent scene authoring with stable IDs, hierarchy and visibility
+- Primitive scene nodes: Cube, Plane, Sphere and Capsule
+- Mesh asset references and material metadata
+- Static/Dynamic/Kinematic collision metadata using Avian 3D
+- Configurable gameplay input actions
+- Animation clips, tracks, keyframes and runtime playback state
+- Serializable Shader Graph model with nodes, links and validation
+- Serializable Visual Scripting graph with runtime state
 - 3D viewport with FreeCamera, InfiniteGrid, picking and Transform Gizmo
-- 3D Translate / Rotate / Scale and World / Local switching
-- 2D viewport with Camera2d, orthographic pan/zoom and grid
-- 2D / 3D switching with `1` / `2`
-- Multi-selection and hierarchy tree
-- Create / Duplicate / Delete entity authoring
-- Parent / Unparent authoring
-- Live Inspector editing for Transform, Name and Visibility
-- Versioned scene JSON with stable IDs, parent relationships and visibility state
-- Main Scene persistence across restart
-- Play / Pause / Stop runtime mode
-- Command Bus and command executor
-- Searchable Asset Browser with type classification, size, generation and selection
-- Persistent settings with Material Light/Dark styling, UI scale, keymap, viewport, graphics and project controls
-- Docking workspace for Viewport, Hierarchy, Inspector, Assets, Console, Profiler, Plugins and Settings
-- Live profiler with FPS and frame-time statistics
-- Plugin and panel registries with live service diagnostics
-- Export pipeline capable of invoking `cargo build --release` and packaging the runtime executable, scene and assets
-- Jackdaw Feathers integration for Bevy-native inspector text fields and event-driven editing
-- Engine feature registry for Scene Editor, ECS Inspector, System Graph, Event Monitor, Query Visualizer, State Editor, Animation, Visual Scripting, Shader Graph, Asset Browser and Profiler services
-- Bounded runtime event monitor and engine diagnostics resources suitable for live tooling
-- Engine graph metadata registry for system dependency visualization
-- Standalone runtime plugin and explicit authored-scene loading API
+- 2D viewport with orthographic camera/pan/zoom and grid
+- World / Local transforms and Translate / Rotate / Scale
+- Multi-selection, hierarchy, parent/unparent, duplicate/delete
+- Live Inspector editing and Jackdaw-native text fields
+- Prefab authoring and validation helpers
+- Asset browser/import database
+- Command bus with Play/Pause/Stop, save, build/export and authoring commands
+- Play-in-editor runtime preview with scene snapshot isolation
+- Runtime frame clock and configurable frame budget
+- Engine diagnostics and bounded event monitoring
+- System dependency metadata registry and engine tools UI
+- Live profiler with FPS/frame-time history
+- Docking workspace with editor and engine diagnostic views
+- Project manager and persistent settings
+- Standalone release export pipeline
+- Android arm64 target scaffold using Bevy GameActivity + cargo-ndk
+- GitHub Actions verification/build pipeline for Linux and Android arm64
 
-## BerryCode-inspired engine tooling
+## Android
 
-BerryCode's current architecture is particularly useful as a product-level reference because it treats Bevy as the game engine itself rather than merely a library. Its documented feature set includes a Unity-class Scene Editor, ECS Inspector, System Graph, Event Monitor, Query Visualizer, State Editor, templates, plugin discovery, Animation System, Visual Scripting and Shader Graph. citehttps://github.com/KyosukeIshizu1008/berryscode
+Bevy 0.19 supports Android using explicit `android-game-activity` or `android-native-activity` features. This project provides a `mobile/` target configured for arm64-v8a/GameActivity. The Android workflow builds the native library with `cargo-ndk`. citeturn753743search0turn753743search2
 
-Bevy-GUI uses those ideas as engine/editor service boundaries. The implementation remains incremental: the current repository already has the scene, asset, selection, command, viewport, runtime and UI foundations; the feature registry gives the next editor panels stable service identities instead of forcing them into one monolithic UI.
+The engine is intentionally designed so Android consumes the runtime layer rather than the desktop editor. This keeps editor-only GUI dependencies out of the mobile game process.
 
 ## Jackdaw integration
 
-The current Jackdaw integration follows the newer Bevy-native GUI direction. The upstream editor exposes dedicated Feathers widgets such as buttons, dialogs, inspector fields, numeric inputs, tree views, panels and text editing; Bevy-GUI consumes the `jackdaw_feathers` widget layer through `src/jackdaw_ui.rs` while keeping the existing egui shell and docking system. citehttps://github.com/jbuehler23/jackdaw
+`jackdaw_feathers` is integrated as a native Bevy widget layer. The current bridge uses Jackdaw's text-edit/event model for inspector fields while the existing egui docking shell remains available for mature desktop tooling.
 
-The integration is intentionally incremental so panels can migrate one at a time rather than forcing an all-or-nothing UI rewrite.
+## BerryCode-inspired tooling
+
+BerryCode demonstrates a useful product boundary around Bevy: scene editing, ECS inspection, system visualization, runtime event inspection, animation, visual scripting and shader graph should be separate engine/editor services rather than one monolithic window. Bevy-GUI now exposes those services as independent modules so they can be expanded without changing the engine core.
 
 ## Source layout
 
@@ -84,8 +95,15 @@ The integration is intentionally incremental so panels can migrate one at a time
 src/
 ├── app.rs
 ├── lib.rs
+├── animation.rs
 ├── engine.rs
 ├── engine_features.rs
+├── engine_runtime.rs
+├── engine_tools_ui.rs
+├── game.rs
+├── input.rs
+├── shader_graph.rs
+├── visual_scripting.rs
 ├── jackdaw_ui.rs
 ├── command.rs
 ├── command_executor.rs
@@ -108,6 +126,9 @@ src/
 ├── viewport/
 ├── viewport2d/
 └── plugins/
+
+mobile/
+└── Cargo.toml
 ```
 
 ## Keyboard authoring
@@ -123,23 +144,19 @@ Ctrl+D             Duplicate selected entity
 Delete             Delete selected entity
 F6 / F7 / F8       Play / Pause / Stop
 F5                 Refresh assets
-Ctrl+S             Save project
+Ctrl+S             Save project + scene
 Ctrl+Shift+B       Build/export project
-Ctrl+O             Open scene command
-Ctrl+Shift+S       Save scene command
+Ctrl+O             Open scene
+Ctrl+Shift+S       Save scene
 ```
-
-## Project persistence
-
-New projects contain a real Bevy 0.19 Cargo game template. The editor writes scene data to `scenes/main.scene.json` and settings to `.bevy-gui/editor-settings.json`.
 
 ## Validation
 
 ```bash
 cargo check --all-targets --all-features
-cargo fmt --all -- --check
-cargo clippy --all-targets --all-features -- -D warnings
 cargo test --all-targets --all-features
+cargo clippy --all-targets --all-features -- -D warnings
+cargo fmt --all -- --check
 ```
 
-GitHub Actions is intentionally manual-only (`workflow_dispatch`). Use **Actions → build → Run workflow → release** when you want a new editor binary.
+GitHub Actions runs verification/builds on pushes and pull requests. The Android arm64 workflow is also available from **Actions → android → Run workflow**.
