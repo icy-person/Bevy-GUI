@@ -10,6 +10,7 @@ pub fn setup_editor_scene(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>,
     project: Res<ProjectState>,
 ) {
     commands.spawn((
@@ -34,7 +35,7 @@ pub fn setup_editor_scene(
             let mut by_id = BTreeMap::new();
             let mut parents = Vec::new();
             for entity in document.entities {
-                let spawned = spawn_editor_node(&mut commands, &mut meshes, &mut materials, &entity);
+                let spawned = spawn_editor_node(&mut commands, &mut meshes, &mut materials, &asset_server, &entity);
                 commands.entity(spawned).observe(select_clicked_entity);
                 by_id.insert(entity.id, spawned);
                 parents.push((spawned, entity.parent));
@@ -73,6 +74,7 @@ fn spawn_editor_node(
     commands: &mut Commands,
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
+    asset_server: &AssetServer,
     entity: &crate::scene::SceneEntity,
 ) -> Entity {
     let material = materials.add(StandardMaterial {
@@ -91,15 +93,17 @@ fn spawn_editor_node(
         EditorPrimitive(entity.visual.primitive),
     ));
     match entity.visual.primitive {
-        ScenePrimitive::Cube => builder.insert((Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))), MeshMaterial3d(material))),
-        ScenePrimitive::Plane => builder.insert((Mesh3d(meshes.add(Plane3d::default().mesh().size(2.0, 2.0))), MeshMaterial3d(material))),
-        ScenePrimitive::Sphere => builder.insert((Mesh3d(meshes.add(Sphere::new(0.5).mesh().uv(24, 16))), MeshMaterial3d(material))),
-        ScenePrimitive::Capsule => builder.insert((Mesh3d(meshes.add(Capsule3d::new(0.35, 0.8).mesh().resolution(16))), MeshMaterial3d(material))),
+        ScenePrimitive::Cube => { builder.insert((Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))), MeshMaterial3d(material))); }
+        ScenePrimitive::Plane => { builder.insert((Mesh3d(meshes.add(Plane3d::default().mesh().size(2.0, 2.0))), MeshMaterial3d(material))); }
+        ScenePrimitive::Sphere => { builder.insert((Mesh3d(meshes.add(Sphere::new(0.5).mesh().uv(24, 16))), MeshMaterial3d(material))); }
+        ScenePrimitive::Capsule => { builder.insert((Mesh3d(meshes.add(Capsule3d::new(0.35, 0.8).mesh().resolution(16))), MeshMaterial3d(material))); }
         ScenePrimitive::None => {
-            if let Some(asset) = &entity.visual.mesh_asset { builder.insert(SceneRoot(asset.clone())); }
-            builder
+            if let Some(asset) = &entity.visual.mesh_asset {
+                builder.insert(SceneRoot(asset_server.load(asset.clone())));
+            }
         }
-    }.id()
+    }
+    builder.id()
 }
 
 fn select_clicked_entity(event: On<Pointer<Click>>, mut selection: ResMut<crate::SelectionState>) {
