@@ -56,7 +56,7 @@ pub use history::{TransformHistory, TransformSnapshot, TransformTransaction};
 pub use input::{EngineAction, EngineActionEvent, EngineInputMap, EngineInputPlugin};
 pub use jackdaw_ui::JackdawUiPlugin;
 pub use panel::{PanelId, PanelRegistry};
-pub use prefab::{load_prefab, prefab_path, save_prefab, spawn_prefab, PrefabDocument, PrefabInstanceOptions, PrefabIoError, PrefabNode};
+pub use prefab::{load_prefab, prefab_path, save_prefab, spawn_prefab, spawn_prefab_with_renderables, PrefabDocument, PrefabInstanceOptions, PrefabIoError, PrefabNode};
 pub use profiler::EditorProfiler;
 pub use project::{create_project, load_project, project_file, save_project, EditorMode, ProjectIoError, ProjectManifest, ProjectState};
 pub use runtime::PlaySession;
