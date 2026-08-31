@@ -10,6 +10,10 @@ on:
       - "Cargo.lock"
       - ".github/workflows/android.yml"
 
+concurrency:
+  group: bevy-gui-android-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   android-arm64:
     runs-on: ubuntu-latest
