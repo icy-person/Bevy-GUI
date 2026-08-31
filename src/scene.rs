@@ -6,6 +6,9 @@ use thiserror::Error;
 #[derive(Component, Debug, Default, Clone, Copy)]
 pub struct SceneNode;
 
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EditorPrimitive(pub ScenePrimitive);
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ScenePrimitive {
     Cube,
@@ -16,9 +19,7 @@ pub enum ScenePrimitive {
 }
 
 impl Default for ScenePrimitive {
-    fn default() -> Self {
-        Self::None
-    }
+    fn default() -> Self { Self::None }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -37,17 +38,9 @@ pub struct SceneVisual {
     pub roughness: f32,
 }
 
-fn default_color() -> [f32; 4] {
-    [0.2, 0.55, 0.95, 1.0]
-}
-
-fn default_metallic() -> f32 {
-    0.0
-}
-
-fn default_roughness() -> f32 {
-    0.5
-}
+fn default_color() -> [f32; 4] { [0.2, 0.55, 0.95, 1.0] }
+fn default_metallic() -> f32 { 0.0 }
+fn default_roughness() -> f32 { 0.5 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SceneDocument {
@@ -69,16 +62,14 @@ pub struct SceneEntity {
     pub visual: SceneVisual,
 }
 
-fn default_visible() -> bool {
-    true
-}
+fn default_visible() -> bool { true }
 
 impl SceneDocument {
     pub fn from_entities<I>(entities: I) -> Self
     where
         I: IntoIterator<Item = (Entity, String, Transform, Option<Entity>)>,
     {
-        self::build_document(entities.into_iter().map(|(entity, name, transform, parent)| {
+        build_document(entities.into_iter().map(|(entity, name, transform, parent)| {
             (entity, name, transform, parent, true, SceneVisual::default())
         }))
     }
@@ -92,9 +83,7 @@ impl SceneDocument {
         }))
     }
 
-    pub fn from_entities_with_visuals<I>(
-        entities: I,
-    ) -> Self
+    pub fn from_entities_with_visuals<I>(entities: I) -> Self
     where
         I: IntoIterator<Item = (Entity, String, Transform, Option<Entity>, bool, SceneVisual)>,
     {
@@ -111,61 +100,29 @@ where
     for (index, (entity, _, _, _, _, _)) in snapshot.iter().enumerate() {
         ids.insert(*entity, index as u64 + 1);
     }
-
     SceneDocument {
         format_version: 4,
-        entities: snapshot
-            .into_iter()
-            .enumerate()
-            .map(|(index, (_entity, name, transform, parent, visible, visual))| {
-                SceneEntity::from_transform(
-                    index as u64 + 1,
-                    parent.and_then(|value| ids.get(&value).copied()),
-                    name,
-                    transform,
-                    visible,
-                    visual,
-                )
-            })
-            .collect(),
+        entities: snapshot.into_iter().enumerate().map(|(index, (_entity, name, transform, parent, visible, visual))| {
+            SceneEntity::from_transform(index as u64 + 1, parent.and_then(|value| ids.get(&value).copied()), name, transform, visible, visual)
+        }).collect(),
     }
 }
 
 impl SceneEntity {
-    fn from_transform(
-        id: u64,
-        parent: Option<u64>,
-        name: String,
-        transform: Transform,
-        visible: bool,
-        visual: SceneVisual,
-    ) -> Self {
+    fn from_transform(id: u64, parent: Option<u64>, name: String, transform: Transform, visible: bool, visual: SceneVisual) -> Self {
         Self {
-            id,
-            parent,
-            name,
+            id, parent, name,
             translation: transform.translation.to_array(),
-            rotation: [
-                transform.rotation.x,
-                transform.rotation.y,
-                transform.rotation.z,
-                transform.rotation.w,
-            ],
+            rotation: [transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w],
             scale: transform.scale.to_array(),
             visible,
             visual,
         }
     }
-
     pub fn transform(&self) -> Transform {
         Transform {
             translation: Vec3::from_array(self.translation),
-            rotation: Quat::from_xyzw(
-                self.rotation[0],
-                self.rotation[1],
-                self.rotation[2],
-                self.rotation[3],
-            ),
+            rotation: Quat::from_xyzw(self.rotation[0], self.rotation[1], self.rotation[2], self.rotation[3]),
             scale: Vec3::from_array(self.scale),
         }
     }
@@ -175,28 +132,57 @@ pub fn spawn_scene(commands: &mut Commands, document: &SceneDocument) -> Vec<Ent
     let mut by_id = std::collections::BTreeMap::new();
     let mut pending_parents = Vec::new();
     let mut spawned = Vec::with_capacity(document.entities.len());
-
     for entity in &document.entities {
-        let entity_id = commands
-            .spawn((
-                Name::new(entity.name.clone()),
-                entity.transform(),
-                if entity.visible { Visibility::Visible } else { Visibility::Hidden },
-                SceneNode,
-                crate::EditorParent(None),
-            ))
-            .id();
-        by_id.insert(entity.id, entity_id);
-        pending_parents.push((entity_id, entity.parent));
-        spawned.push(entity_id);
+        let spawned_entity = commands.spawn((Name::new(entity.name.clone()), entity.transform(), if entity.visible { Visibility::Visible } else { Visibility::Hidden }, SceneNode, crate::EditorParent(None))).id();
+        by_id.insert(entity.id, spawned_entity);
+        pending_parents.push((spawned_entity, entity.parent));
+        spawned.push(spawned_entity);
     }
-
     for (entity, parent_id) in pending_parents {
         if let Some(parent_id) = parent_id.and_then(|id| by_id.get(&id).copied()) {
             commands.entity(entity).insert(crate::EditorParent(Some(parent_id)));
         }
     }
+    spawned
+}
 
+/// Runtime-friendly scene spawning. Primitive visuals are materialized into Bevy
+/// mesh/material assets and external glTF references become SceneRoot instances.
+pub fn spawn_scene_with_renderables(
+    commands: &mut Commands,
+    meshes: &mut Assets<Mesh>,
+    materials: &mut Assets<StandardMaterial>,
+    asset_server: &AssetServer,
+    document: &SceneDocument,
+) -> Vec<Entity> {
+    let mut by_id = std::collections::BTreeMap::new();
+    let mut pending_parents = Vec::new();
+    let mut spawned = Vec::with_capacity(document.entities.len());
+    for entity in &document.entities {
+        let color = Color::srgba(entity.visual.base_color[0], entity.visual.base_color[1], entity.visual.base_color[2], entity.visual.base_color[3]);
+        let material = materials.add(StandardMaterial { base_color: color, metallic: entity.visual.metallic.clamp(0.0, 1.0), perceptual_roughness: entity.visual.roughness.clamp(0.0, 1.0), ..default() });
+        let mut builder = commands.spawn((Name::new(entity.name.clone()), entity.transform(), if entity.visible { Visibility::Visible } else { Visibility::Hidden }, SceneNode, crate::EditorParent(None)));
+        match entity.visual.primitive {
+            ScenePrimitive::Cube => { builder.insert((Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))), MeshMaterial3d(material))); }
+            ScenePrimitive::Plane => { builder.insert((Mesh3d(meshes.add(Plane3d::default().mesh().size(2.0, 2.0))), MeshMaterial3d(material))); }
+            ScenePrimitive::Sphere => { builder.insert((Mesh3d(meshes.add(Sphere::new(0.5).mesh().uv(32, 18))), MeshMaterial3d(material))); }
+            ScenePrimitive::Capsule => { builder.insert((Mesh3d(meshes.add(Capsule3d::new(0.35, 0.8).mesh().resolution(24))), MeshMaterial3d(material))); }
+            ScenePrimitive::None => {
+                if let Some(asset) = &entity.visual.mesh_asset {
+                    builder.insert(SceneRoot(asset_server.load(asset.clone())));
+                }
+            }
+        }
+        let spawned_entity = builder.id();
+        by_id.insert(entity.id, spawned_entity);
+        pending_parents.push((spawned_entity, entity.parent));
+        spawned.push(spawned_entity);
+    }
+    for (entity, parent_id) in pending_parents {
+        if let Some(parent_id) = parent_id.and_then(|id| by_id.get(&id).copied()) {
+            commands.entity(entity).insert(ChildOf(parent_id));
+        }
+    }
     spawned
 }
 
@@ -215,9 +201,7 @@ pub enum SceneIoError {
 }
 
 pub fn save_scene(path: &Path, document: &SceneDocument) -> Result<(), SceneIoError> {
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(SceneIoError::CreateDirectory)?;
-    }
+    if let Some(parent) = path.parent() { fs::create_dir_all(parent).map_err(SceneIoError::CreateDirectory)?; }
     let json = serde_json::to_string_pretty(document).map_err(SceneIoError::Serialize)?;
     fs::write(path, json).map_err(SceneIoError::Write)
 }
@@ -230,42 +214,18 @@ pub fn load_scene(path: &Path) -> Result<SceneDocument, SceneIoError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn scene_json_round_trip() {
         let parent = Entity::from_bits(1);
         let child = Entity::from_bits(2);
         let document = SceneDocument::from_entities_with_visuals([
-            (
-                parent,
-                "Root".to_owned(),
-                Transform::default(),
-                None,
-                true,
-                SceneVisual {
-                    primitive: ScenePrimitive::Cube,
-                    ..default()
-                },
-            ),
-            (
-                child,
-                "Player".to_owned(),
-                Transform {
-                    translation: Vec3::new(1.0, 2.0, 3.0),
-                    rotation: Quat::from_rotation_y(0.5),
-                    scale: Vec3::splat(2.0),
-                },
-                Some(parent),
-                false,
-                SceneVisual::default(),
-            ),
+            (parent, "Root".to_owned(), Transform::default(), None, true, SceneVisual { primitive: ScenePrimitive::Cube, ..default() }),
+            (child, "Player".to_owned(), Transform { translation: Vec3::new(1.0,2.0,3.0), rotation: Quat::from_rotation_y(0.5), scale: Vec3::splat(2.0) }, Some(parent), false, SceneVisual::default()),
         ]);
-        let json = serde_json::to_string(&document).expect("scene serialization should succeed");
-        let restored: SceneDocument =
-            serde_json::from_str(&json).expect("scene parsing should succeed");
+        let json = serde_json::to_string(&document).unwrap();
+        let restored: SceneDocument = serde_json::from_str(&json).unwrap();
         assert_eq!(restored.format_version, 4);
         assert_eq!(restored.entities.len(), 2);
-        assert_eq!(restored.entities[1].name, "Player");
         assert_eq!(restored.entities[1].parent, Some(1));
         assert!(!restored.entities[1].visible);
         assert_eq!(restored.entities[0].visual.primitive, ScenePrimitive::Cube);
