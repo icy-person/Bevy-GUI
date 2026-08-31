@@ -8,7 +8,7 @@ use crate::{
     component_registry::install_component_registry,
     docking::EditorDockState,
     editor::register_builtin_state,
-    engine::{EnginePlugin, EngineRuntimePlugin},
+    engine::EnginePlugin,
     engine_features::EngineFeaturesPlugin,
     jackdaw_ui::JackdawUiPlugin,
     panel::PanelRegistry,
@@ -54,12 +54,6 @@ impl Plugin for BevyGuiPlugin {
             .add_systems(Startup, register_default_commands)
             .add_systems(Update, execute_editor_commands);
     }
-}
-
-/// Minimal engine-only plugin stack for a generated standalone Bevy game.
-/// It deliberately excludes all editor UI, docking and authoring systems.
-pub fn standalone_engine_plugins() -> impl PluginGroup {
-    (EngineRuntimePlugin,)
 }
 
 fn load_import_database(project: Res<ProjectState>, mut database: ResMut<ImportDatabase>) {
