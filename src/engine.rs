@@ -2,15 +2,15 @@ use bevy::prelude::*;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use crate::project::{EditorMode, ProjectState};
+use crate::engine_runtime::EngineRuntimeCorePlugin;
+use crate::input::EngineInputPlugin;
+use crate::project::{EditorMode,ProjectState};
 use crate::runtime::PlaySession;
-use crate::scene::{EditorPrimitive, ScenePrimitive};
+use crate::scene::{EditorPrimitive,ScenePrimitive};
 use crate::scene_model::EditorParent;
 use crate::viewport::EditorEntity;
-use crate::engine_runtime::EngineRuntimeCorePlugin;
 
-#[derive(Resource, Debug, Clone)]
-pub struct EngineSettings { pub fixed_timestep_hz:f64,pub max_delta_seconds:f32,pub enable_physics:bool,pub enable_audio:bool,pub enable_hot_reload:bool }
+#[derive(Resource,Debug,Clone)]pub struct EngineSettings{pub fixed_timestep_hz:f64,pub max_delta_seconds:f32,pub enable_physics:bool,pub enable_audio:bool,pub enable_hot_reload:bool}
 impl Default for EngineSettings{fn default()->Self{Self{fixed_timestep_hz:60.0,max_delta_seconds:0.1,enable_physics:true,enable_audio:true,enable_hot_reload:true}}}
 #[derive(Resource,Debug,Default,Clone)]pub struct EnginePaths{pub project_root:PathBuf,pub assets:PathBuf,pub scenes:PathBuf,pub cache:PathBuf}
 #[derive(Resource,Debug,Clone)]pub struct EngineRuntimeConfig{pub project_root:PathBuf,pub main_scene:Option<PathBuf>}
@@ -19,7 +19,7 @@ impl EngineRuntimeConfig{pub fn with_scene(path:impl Into<PathBuf>)->Self{Self{m
 #[derive(Component,Debug,Clone,Copy)]pub struct RuntimeEntity;
 
 pub struct EngineRuntimePlugin;
-impl Plugin for EngineRuntimePlugin{fn build(&self,app:&mut App){app.add_plugins(EngineRuntimeCorePlugin).init_resource::<EngineSettings>().init_resource::<EnginePaths>().init_resource::<EngineRuntimeConfig>().add_plugins(avian3d::prelude::PhysicsPlugins::default()).add_systems(Startup,(initialize_runtime_paths,load_configured_scene));}}
+impl Plugin for EngineRuntimePlugin{fn build(&self,app:&mut App){app.add_plugins((EngineRuntimeCorePlugin,EngineInputPlugin)).init_resource::<EngineSettings>().init_resource::<EnginePaths>().init_resource::<EngineRuntimeConfig>().add_plugins(avian3d::prelude::PhysicsPlugins::default()).add_systems(Startup,(initialize_runtime_paths,load_configured_scene));}}
 fn initialize_runtime_paths(config:Res<EngineRuntimeConfig>,mut paths:ResMut<EnginePaths>){paths.project_root=config.project_root.clone();paths.assets=config.project_root.join("assets");paths.scenes=config.project_root.join("scenes");paths.cache=config.project_root.join(".bevy-gui");}
 fn load_configured_scene(mut commands:Commands,config:Res<EngineRuntimeConfig>,mut meshes:ResMut<Assets<Mesh>>,mut materials:ResMut<Assets<StandardMaterial>>,asset_server:Res<AssetServer>){let Some(path)=config.scene_path()else{return};match crate::scene::load_scene(&path){Ok(document)=>{crate::scene::spawn_scene_with_renderables(&mut commands,&mut meshes,&mut materials,&asset_server,&document);}Err(error)=>warn!("Failed to load scene {}: {}",path.display(),error)}}
 pub fn load_runtime_scene(commands:&mut Commands,config:&EngineRuntimeConfig)->Result<Vec<Entity>,crate::scene::SceneIoError>{let path=config.scene_path().ok_or_else(||crate::scene::SceneIoError::Read(std::io::Error::other("no main scene configured")))?;let document=crate::scene::load_scene(&path)?;Ok(crate::scene::spawn_scene(commands,&document))}
