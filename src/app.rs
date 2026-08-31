@@ -10,6 +10,7 @@ use crate::{
     editor::register_builtin_state,
     engine::EnginePlugin,
     engine_features::EngineFeaturesPlugin,
+    engine_tools_ui::EngineToolsUiPlugin,
     jackdaw_ui::JackdawUiPlugin,
     panel::PanelRegistry,
     plugins::install_builtin_editor_plugins,
@@ -31,6 +32,7 @@ impl Plugin for BevyGuiPlugin {
             .add_plugins(JackdawUiPlugin)
             .add_plugins(EnginePlugin)
             .add_plugins(EngineFeaturesPlugin)
+            .add_plugins(EngineToolsUiPlugin)
             .init_resource::<ProjectState>()
             .init_resource::<EditorCommandRegistry>()
             .init_resource::<EditorCommandBus>()
@@ -77,6 +79,8 @@ fn register_default_commands(mut registry: ResMut<EditorCommandRegistry>) {
         ("scene.new_entity", "Create Entity", Some("Ctrl+Shift+A")),
         ("scene.new_cube", "Create Cube at Cursor", Some("Shift+A")),
         ("scene.new_plane", "Create Plane at Cursor", Some("Shift+P")),
+        ("scene.new_sphere", "Create Sphere at Cursor", Some("Shift+S")),
+        ("scene.new_capsule", "Create Capsule at Cursor", Some("Shift+C")),
         ("scene.duplicate", "Duplicate Entity", Some("Ctrl+D")),
         ("scene.delete", "Delete Entity", Some("Delete")),
         ("scene.validate", "Validate Scene", Some("Ctrl+Shift+V")),
