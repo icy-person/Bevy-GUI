@@ -1,7 +1,9 @@
 //! Bevy-GUI: a plugin-first editor and game-engine platform built on Bevy 0.19.
 //! The editor, authored scene format, runtime bootstrap, diagnostics, physics,
-//! input and engine services share one reusable Rust architecture.
+//! input, animation, shader graphs, visual scripting and engine services share
+//! one reusable Rust architecture.
 
+pub mod animation;
 pub mod app;
 pub mod asset_pipeline;
 pub mod assets;
@@ -30,10 +32,13 @@ pub mod scene_model;
 pub mod scene_tools;
 pub mod selection;
 pub mod settings;
+pub mod shader_graph;
 pub mod ui;
 pub mod viewport;
 pub mod viewport2d;
+pub mod visual_scripting;
 
+pub use animation::{AnimationClip, AnimationLibrary, AnimationRuntimePlugin, AnimationTrack, AnimatorState, KeyValue, Keyframe};
 pub use app::BevyGuiPlugin;
 pub use asset_pipeline::{ImportDatabase, ImportedAsset, ImportKind, ImportReport, ImportSettings, ImportStatus};
 pub use assets::{AssetDatabase, AssetEntry, AssetKind};
@@ -60,4 +65,6 @@ pub use scene_model::{EditorParent, SceneEditorState, SceneNodeModel};
 pub use scene_tools::{delete_subtree, duplicate_subtree, reparent_entity, validate_scene, SceneSelectionSet, SceneTool, SceneValidationReport};
 pub use selection::SelectionState;
 pub use settings::{load_settings, save_settings, EditorSettings, EditorSettingsState};
+pub use shader_graph::{ShaderGraph, ShaderGraphLibrary, ShaderGraphPlugin, ShaderLink, ShaderNode, ShaderNodeId, ShaderNodeKind};
 pub use viewport::EditorEntity;
+pub use visual_scripting::{VisualLink, VisualNode, VisualNodeId, VisualNodeKind, VisualScript, VisualScriptAsset, VisualScriptEventQueue, VisualScriptRuntime, VisualScriptingPlugin};
