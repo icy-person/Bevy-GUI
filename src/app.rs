@@ -1,12 +1,32 @@
 use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
-use crate::{asset_pipeline::ImportDatabase,assets::install_asset_database,command::{EditorCommand,EditorCommandBus,EditorCommandId,EditorCommandRegistry},command_executor::{execute_editor_commands,CommandExecutionState},component_registry::install_component_registry,docking::EditorDockState,editor::register_builtin_state,panel::PanelRegistry,plugins::install_builtin_editor_plugins,profiler::install_profiler,project::ProjectState,scene_model::SceneEditorState,scene_tools::SceneSelectionSet,settings::install_settings,ui::{command_palette::install_command_palette,install_editor_ui},viewport::install_viewport,viewport2d::install_2d_viewport};
+use crate::{
+    asset_pipeline::ImportDatabase,
+    assets::install_asset_database,
+    command::{EditorCommand, EditorCommandBus, EditorCommandId, EditorCommandRegistry},
+    command_executor::{execute_editor_commands, CommandExecutionState},
+    component_registry::install_component_registry,
+    docking::EditorDockState,
+    editor::register_builtin_state,
+    jackdaw_ui::JackdawUiPlugin,
+    panel::PanelRegistry,
+    plugins::install_builtin_editor_plugins,
+    profiler::install_profiler,
+    project::ProjectState,
+    scene_model::SceneEditorState,
+    scene_tools::SceneSelectionSet,
+    settings::install_settings,
+    ui::{command_palette::install_command_palette, install_editor_ui},
+    viewport::install_viewport,
+    viewport2d::install_2d_viewport,
+};
 
 pub struct BevyGuiPlugin;
 
 impl Plugin for BevyGuiPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(EguiPlugin::default())
+            .add_plugins(JackdawUiPlugin)
             .init_resource::<ProjectState>()
             .init_resource::<EditorCommandRegistry>()
             .init_resource::<EditorCommandBus>()
