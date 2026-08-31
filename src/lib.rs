@@ -1,6 +1,8 @@
 //! Bevy-GUI: a plugin-first editor and game-engine platform built on Bevy 0.19.
-//! The editor, authored scene format, runtime bootstrap and engine services live
-//! in one reusable Rust library so generated games can consume the same core APIs.
+//! The editor, authored scene format, runtime bootstrap, diagnostics and engine
+//! services share one reusable Rust architecture. The UI layer combines the
+//! existing egui workflow with Bevy-native widgets inspired by the modern Bevy
+//! editor ecosystem.
 
 pub mod app;
 pub mod asset_pipeline;
@@ -11,6 +13,7 @@ pub mod component_registry;
 pub mod docking;
 pub mod editor;
 pub mod engine;
+pub mod engine_features;
 pub mod export;
 pub mod history;
 pub mod jackdaw_ui;
@@ -38,6 +41,7 @@ pub use component_registry::{ComponentDescriptor, ComponentKind, ComponentRegist
 pub use docking::{EditorDockState, EditorTab};
 pub use editor::{EditorPanel, EditorPanelContext, EditorPlugin, EditorPluginRegistry, ViewportMode};
 pub use engine::{load_runtime_scene, project_engine_paths, EnginePaths, EnginePlugin, EngineRuntimeConfig, EngineRuntimePlugin, EngineSettings, RuntimeEntity};
+pub use engine_features::{EngineDiagnostics, EngineEventMonitor, EngineEventRecord, EngineFeature, EngineFeatureRegistry, EngineFeaturesPlugin, EngineGraphRegistry, EngineSystemInfo};
 pub use export::{default_profile, export_project, ExportError, ExportProfile, ExportReport};
 pub use history::{TransformHistory, TransformSnapshot};
 pub use jackdaw_ui::JackdawUiPlugin;
