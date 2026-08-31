@@ -42,7 +42,7 @@ pub use animation::{AnimationClip, AnimationLibrary, AnimationRuntimePlugin, Ani
 pub use app::BevyGuiPlugin;
 pub use asset_pipeline::{ImportDatabase, ImportedAsset, ImportKind, ImportReport, ImportSettings, ImportStatus};
 pub use assets::{AssetDatabase, AssetEntry, AssetKind};
-pub use command::{EditorCommand, EditorCommandBus, EditorCommandId, EditorCommandRegistry};
+pub use command::{EditorCommand, EditorCommandBus, EditorCommandId, EditorCommandRegistry, HistoryCommandEvent};
 pub use command_executor::CommandExecutionState;
 pub use component_registry::{ComponentDescriptor, ComponentKind, ComponentRegistry, PropertyDescriptor, PropertyKind};
 pub use docking::{EditorDockState, EditorTab};
@@ -52,7 +52,7 @@ pub use engine_features::{EngineDiagnostics, EngineEventMonitor, EngineEventReco
 pub use engine_runtime::{EngineClock, EngineFrameBudget, EngineFrameEvent, EngineRuntimeCorePlugin};
 pub use engine_tools_ui::{EngineToolsTab, EngineToolsUiPlugin, EngineToolsUiState};
 pub use game::{build_game_app, GameConfig};
-pub use history::{TransformHistory, TransformSnapshot};
+pub use history::{TransformHistory, TransformSnapshot, TransformTransaction};
 pub use input::{EngineAction, EngineActionEvent, EngineInputMap, EngineInputPlugin};
 pub use jackdaw_ui::JackdawUiPlugin;
 pub use panel::{PanelId, PanelRegistry};
