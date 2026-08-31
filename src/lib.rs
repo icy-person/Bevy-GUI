@@ -55,7 +55,7 @@ pub use prefab::{load_prefab, prefab_path, save_prefab, spawn_prefab, PrefabDocu
 pub use profiler::EditorProfiler;
 pub use project::{create_project, load_project, project_file, save_project, EditorMode, ProjectIoError, ProjectManifest, ProjectState};
 pub use runtime::PlaySession;
-pub use scene::{load_scene, load_scene as load_authored_scene, save_scene, spawn_scene, spawn_scene_with_renderables, EditorPrimitive, SceneBody, SceneDocument, SceneEntity, SceneIoError, SceneNode, SceneNodeKind, ScenePrimitive, SceneVisual};
+pub use scene::{load_scene, load_scene as load_authored_scene, save_scene, spawn_scene, spawn_scene_with_renderables, EditorPrimitive, SceneDocument, SceneEntity, SceneIoError, SceneNode, ScenePrimitive, SceneVisual};
 pub use scene_model::{EditorParent, SceneEditorState, SceneNodeModel};
 pub use scene_tools::{delete_subtree, duplicate_subtree, reparent_entity, validate_scene, SceneSelectionSet, SceneTool, SceneValidationReport};
 pub use selection::SelectionState;
