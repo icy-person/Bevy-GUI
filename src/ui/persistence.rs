@@ -1,9 +1,14 @@
 use std::path::PathBuf;
 use bevy::prelude::*;
-use crate::{editor::EditorUiState, project::{save_project,ProjectState},scene::{save_scene,EditorPrimitive,SceneDocument,ScenePrimitive,SceneVisual},scene_model::EditorParent,viewport::EditorEntity};
+use crate::{editor::EditorUiState,project::{save_project,ProjectState},scene::{save_scene,EditorPrimitive,SceneDocument,ScenePrimitive,SceneVisual}};
 
-pub fn save_editor_project(project:&mut ProjectState,state:&mut EditorUiState,entities:&[(Entity,String,Transform,Option<Entity>,bool,SceneVisual)]){
-    let document=SceneDocument::from_entities_with_visuals(entities.iter().map(|(entity,name,transform,parent,visible,visual)|(*entity,name.clone(),*transform,*parent,*visible,visual.clone())));
+pub trait SceneSaveItem{fn into_saved(self)->(Entity,String,Transform,Option<Entity>,bool,SceneVisual);}
+impl SceneSaveItem for (Entity,String,Transform,Option<Entity>,bool){fn into_saved(self)->(Entity,String,Transform,Option<Entity>,bool,SceneVisual){let(entity,name,transform,parent,visible)=self;(entity,name,transform,parent,visible,SceneVisual::default())}}
+impl SceneSaveItem for (Entity,String,Transform,Option<Entity>,bool,SceneVisual){fn into_saved(self)->(Entity,String,Transform,Option<Entity>,bool,SceneVisual){self}}
+
+pub fn save_editor_project<I,T>(project:&mut ProjectState,state:&mut EditorUiState,entities:I)
+where I:IntoIterator<Item=T>, T:SceneSaveItem{
+    let document=SceneDocument::from_entities_with_visuals(entities.into_iter().map(SceneSaveItem::into_saved));
     let relative=project.main_scene.clone().unwrap_or_else(||PathBuf::from(".bevy-gui/untitled.scene.json"));
     let root=project.root.clone();
     let path=root.join(relative);
@@ -16,4 +21,4 @@ pub fn save_editor_project(project:&mut ProjectState,state:&mut EditorUiState,en
 pub fn visual_for_entity(primitive:Option<&EditorPrimitive>)->SceneVisual{SceneVisual{primitive:primitive.map(|p|p.0).unwrap_or(ScenePrimitive::None),..default()}}
 
 #[cfg(test)]
-mod tests{use super::*;#[test]fn visual_defaults_to_none(){assert_eq!(visual_for_entity(None).primitive,ScenePrimitive::None);}}
+mod tests{use super::*;#[test]fn legacy_items_still_save(){let value=(Entity::from_bits(1),"Root".to_owned(),Transform::default(),None,true).into_saved();assert_eq!(value.5.primitive,ScenePrimitive::None);}}
