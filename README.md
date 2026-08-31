@@ -27,6 +27,13 @@ Bevy-GUI is a plugin-first game-editor platform built on Bevy 0.19. The editor i
 - Plugin and panel registries with live service diagnostics
 - Export pipeline capable of invoking `cargo build --release` and packaging the runtime executable, scene and assets
 - Manual Linux x86_64 release/debug build workflow
+- Jackdaw Feathers integration for Bevy-native inspector text fields and event-driven editing
+
+## Jackdaw GUI integration
+
+The editor now includes a small compatibility layer in `src/jackdaw_ui.rs` that adopts the current Jackdaw editor's native Bevy UI approach without replacing the existing egui shell. It uses the upstream `jackdaw_feathers` widgets and installs an Inspector bridge with editable `Name` and `Transform.translation.x` fields.
+
+The integration is intentionally incremental: the current docking, scene, asset and viewport systems remain intact while Jackdaw's Feathers widgets can be introduced panel-by-panel. This follows the same direction as Jackdaw's current architecture: Bevy-native plugins, reflection-friendly field bindings, event-driven edits, and modular editor subsystems.
 
 ## Source layout
 
@@ -34,6 +41,7 @@ Bevy-GUI is a plugin-first game-editor platform built on Bevy 0.19. The editor i
 src/
 ├── app.rs
 ├── lib.rs
+├── jackdaw_ui.rs
 ├── command.rs
 ├── command_executor.rs
 ├── editor.rs
