@@ -8,6 +8,7 @@ use crate::{
     component_registry::install_component_registry,
     docking::EditorDockState,
     editor::register_builtin_state,
+    engine::EnginePlugin,
     jackdaw_ui::JackdawUiPlugin,
     panel::PanelRegistry,
     plugins::install_builtin_editor_plugins,
@@ -27,6 +28,7 @@ impl Plugin for BevyGuiPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(EguiPlugin::default())
             .add_plugins(JackdawUiPlugin)
+            .add_plugins(EnginePlugin)
             .init_resource::<ProjectState>()
             .init_resource::<EditorCommandRegistry>()
             .init_resource::<EditorCommandBus>()
