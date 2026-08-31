@@ -1,13 +1,13 @@
 [package]
 name = "bevy-gui"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 description = "Plugin-first Bevy 0.19 game engine and visual editor"
 rust-version = "1.95"
 
 [dependencies]
-bevy = { version = "0.19", default-features = false, features = ["2d", "3d", "ui", "bevy_dev_tools", "free_camera", "bevy_asset", "bevy_gltf", "audio"] }
+bevy = { version = "0.19", default-features = false, features = ["2d", "3d", "ui", "bevy_dev_tools", "free_camera", "bevy_asset", "bevy_gltf", "bevy_audio", "wav", "vorbis"] }
 avian3d = { version = "0.7", default-features = false, features = ["3d", "parry-f32", "parallel"] }
 bevy_egui = "0.41.1"
 egui = "0.35"
@@ -19,10 +19,11 @@ thiserror = "2"
 tracing = "0.1"
 
 [features]
-default = ["native-editor", "jackdaw-ui", "physics", "asset-hot-reload"]
+default = ["native-editor", "jackdaw-ui", "physics", "audio", "asset-hot-reload"]
 native-editor = []
 jackdaw-ui = []
 physics = []
+audio = ["bevy/bevy_audio", "bevy/wav", "bevy/vorbis"]
 asset-hot-reload = ["bevy/file_watcher"]
 
 [profile.dev]
