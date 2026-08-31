@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
 use crate::{
+    animation::AnimationRuntimePlugin,
     asset_pipeline::ImportDatabase,
     assets::install_asset_database,
     command::{EditorCommand, EditorCommandBus, EditorCommandId, EditorCommandRegistry, HistoryCommandEvent},
@@ -19,20 +20,25 @@ use crate::{
     scene_model::SceneEditorState,
     scene_tools::SceneSelectionSet,
     settings::install_settings,
+    shader_graph::ShaderGraphPlugin,
     ui::{command_palette::install_command_palette, install_editor_ui},
     viewport::install_viewport,
     viewport2d::install_2d_viewport,
+    visual_scripting::VisualScriptingPlugin,
 };
 
 pub struct BevyGuiPlugin;
 
 impl Plugin for BevyGuiPlugin {
-    fn build(&self, app: &mut App) {
+    fn build(&self, app:&mut App) {
         app.add_plugins(EguiPlugin::default())
             .add_plugins(JackdawUiPlugin)
             .add_plugins(EnginePlugin)
             .add_plugins(EngineFeaturesPlugin)
             .add_plugins(EngineToolsUiPlugin)
+            .add_plugins(AnimationRuntimePlugin)
+            .add_plugins(ShaderGraphPlugin)
+            .add_plugins(VisualScriptingPlugin)
             .init_resource::<ProjectState>()
             .init_resource::<EditorCommandRegistry>()
             .init_resource::<EditorCommandBus>()
@@ -54,43 +60,36 @@ impl Plugin for BevyGuiPlugin {
         install_2d_viewport(app);
         install_editor_ui(app);
         install_command_palette(app);
-        app.add_systems(PostStartup, load_import_database)
-            .add_systems(Startup, register_default_commands)
-            .add_systems(Update, (execute_editor_commands, execute_history_commands));
+        app.add_systems(PostStartup,load_import_database)
+            .add_systems(Startup,register_default_commands)
+            .add_systems(Update,(execute_editor_commands,execute_history_commands));
     }
 }
 
-fn load_import_database(project: Res<ProjectState>, mut database: ResMut<ImportDatabase>) {
-    match ImportDatabase::load(project.root.clone()) {
-        Ok(loaded) => *database = loaded,
-        Err(_) => *database = ImportDatabase::new(project.root.clone()),
-    }
-}
+fn load_import_database(project:Res<ProjectState>,mut database:ResMut<ImportDatabase>) { match ImportDatabase::load(project.root.clone()){Ok(loaded)=>*database=loaded,Err(_)=>*database=ImportDatabase::new(project.root.clone())} }
 
-fn register_default_commands(mut registry: ResMut<EditorCommandRegistry>) {
-    for (id, label, shortcut) in [
-        ("project.save", "Save Project", Some("Ctrl+S")),
-        ("project.play", "Play", Some("F6")),
-        ("project.pause", "Pause", Some("F7")),
-        ("project.stop", "Stop", Some("F8")),
-        ("project.export", "Export Project", Some("Ctrl+Shift+B")),
-        ("edit.undo", "Undo", Some("Ctrl+Z")),
-        ("edit.redo", "Redo", Some("Ctrl+Y")),
-        ("scene.save", "Save Scene", Some("Ctrl+Shift+S")),
-        ("scene.open", "Open Scene", Some("Ctrl+O")),
-        ("scene.new_entity", "Create Entity", Some("Ctrl+Shift+A")),
-        ("scene.new_cube", "Create Cube at Cursor", Some("Shift+A")),
-        ("scene.new_plane", "Create Plane at Cursor", Some("Shift+P")),
-        ("scene.new_sphere", "Create Sphere at Cursor", Some("Shift+S")),
-        ("scene.new_capsule", "Create Capsule at Cursor", Some("Shift+C")),
-        ("scene.duplicate", "Duplicate Entity", Some("Ctrl+D")),
-        ("scene.delete", "Delete Entity", Some("Delete")),
-        ("scene.validate", "Validate Scene", Some("Ctrl+Shift+V")),
-        ("scene.prefab_create", "Create Prefab", Some("Ctrl+P")),
-        ("assets.refresh", "Refresh Assets", Some("F5")),
-        ("assets.import", "Import Assets", Some("Ctrl+Shift+I")),
-        ("editor.command_palette", "Command Palette", Some("Ctrl+Shift+P")),
-    ] {
-        registry.register(EditorCommand { id: EditorCommandId(id), label, shortcut });
-    }
+fn register_default_commands(mut registry:ResMut<EditorCommandRegistry>) {
+    for (id,label,shortcut) in [
+        ("project.save","Save Project",Some("Ctrl+S")),
+        ("project.play","Play",Some("F6")),
+        ("project.pause","Pause",Some("F7")),
+        ("project.stop","Stop",Some("F8")),
+        ("project.export","Export Project",Some("Ctrl+Shift+B")),
+        ("edit.undo","Undo",Some("Ctrl+Z")),
+        ("edit.redo","Redo",Some("Ctrl+Y")),
+        ("scene.save","Save Scene",Some("Ctrl+Shift+S")),
+        ("scene.open","Open Scene",Some("Ctrl+O")),
+        ("scene.new_entity","Create Entity",Some("Ctrl+Shift+A")),
+        ("scene.new_cube","Create Cube at Cursor",Some("Shift+A")),
+        ("scene.new_plane","Create Plane at Cursor",Some("Shift+P")),
+        ("scene.new_sphere","Create Sphere at Cursor",Some("Shift+S")),
+        ("scene.new_capsule","Create Capsule at Cursor",Some("Shift+C")),
+        ("scene.duplicate","Duplicate Entity",Some("Ctrl+D")),
+        ("scene.delete","Delete Entity",Some("Delete")),
+        ("scene.validate","Validate Scene",Some("Ctrl+Shift+V")),
+        ("scene.prefab_create","Create Prefab",Some("Ctrl+P")),
+        ("assets.refresh","Refresh Assets",Some("F5")),
+        ("assets.import","Import Assets",Some("Ctrl+Shift+I")),
+        ("editor.command_palette","Command Palette",Some("Ctrl+Shift+P")),
+    ] { registry.register(EditorCommand{id:EditorCommandId(id),label,shortcut}); }
 }
