@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use bevy::app::ScheduleRunnerPlugin;
 use bevy_gui::{EngineRuntimeConfig, EngineRuntimePlugin};
 
 #[bevy_main]
