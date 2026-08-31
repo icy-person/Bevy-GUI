@@ -3,8 +3,8 @@ use bevy_egui::EguiPlugin;
 use crate::{
     asset_pipeline::ImportDatabase,
     assets::install_asset_database,
-    command::{EditorCommand, EditorCommandBus, EditorCommandId, EditorCommandRegistry},
-    command_executor::{execute_editor_commands, CommandExecutionState},
+    command::{EditorCommand, EditorCommandBus, EditorCommandId, EditorCommandRegistry, HistoryCommandEvent},
+    command_executor::{execute_editor_commands, execute_history_commands, CommandExecutionState},
     component_registry::install_component_registry,
     docking::EditorDockState,
     editor::register_builtin_state,
@@ -37,6 +37,8 @@ impl Plugin for BevyGuiPlugin {
             .init_resource::<EditorCommandRegistry>()
             .init_resource::<EditorCommandBus>()
             .init_resource::<CommandExecutionState>()
+            .init_resource::<crate::TransformHistory>()
+            .add_event::<HistoryCommandEvent>()
             .init_resource::<EditorDockState>()
             .init_resource::<SceneEditorState>()
             .init_resource::<PanelRegistry>()
@@ -54,7 +56,7 @@ impl Plugin for BevyGuiPlugin {
         install_command_palette(app);
         app.add_systems(PostStartup, load_import_database)
             .add_systems(Startup, register_default_commands)
-            .add_systems(Update, execute_editor_commands);
+            .add_systems(Update, (execute_editor_commands, execute_history_commands));
     }
 }
 
