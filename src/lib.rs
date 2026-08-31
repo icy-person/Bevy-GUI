@@ -1,6 +1,6 @@
 //! Bevy-GUI: a plugin-first editor and game-engine platform built on Bevy 0.19.
-//! The editor, authored scene format, runtime bootstrap, diagnostics, physics
-//! and engine services share one reusable Rust architecture.
+//! The editor, authored scene format, runtime bootstrap, diagnostics, physics,
+//! input and engine services share one reusable Rust architecture.
 
 pub mod app;
 pub mod asset_pipeline;
@@ -14,7 +14,9 @@ pub mod engine;
 pub mod engine_features;
 pub mod engine_runtime;
 pub mod export;
+pub mod game;
 pub mod history;
+pub mod input;
 pub mod jackdaw_ui;
 pub mod panel;
 pub mod plugins;
@@ -42,8 +44,9 @@ pub use editor::{EditorPanel, EditorPanelContext, EditorPlugin, EditorPluginRegi
 pub use engine::{load_runtime_scene, project_engine_paths, EnginePaths, EnginePlugin, EngineRuntimeConfig, EngineRuntimePlugin, EngineSettings, RuntimeEntity};
 pub use engine_features::{EngineDiagnostics, EngineEventMonitor, EngineEventRecord, EngineFeature, EngineFeatureRegistry, EngineFeaturesPlugin, EngineGraphRegistry, EngineSystemInfo};
 pub use engine_runtime::{EngineClock, EngineFrameBudget, EngineFrameEvent, EngineRuntimeCorePlugin};
-pub use export::{default_profile, export_project, ExportError, ExportProfile, ExportReport};
+pub use game::{build_game_app, GameConfig};
 pub use history::{TransformHistory, TransformSnapshot};
+pub use input::{EngineAction, EngineActionEvent, EngineInputMap, EngineInputPlugin};
 pub use jackdaw_ui::JackdawUiPlugin;
 pub use panel::{PanelId, PanelRegistry};
 pub use prefab::{load_prefab, prefab_path, save_prefab, spawn_prefab, PrefabDocument, PrefabInstanceOptions, PrefabIoError, PrefabNode};
