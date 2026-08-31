@@ -1,13 +1,14 @@
 [package]
 name = "bevy-gui"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
-description = "Plugin-first editor platform for the Bevy game engine"
+description = "Plugin-first Bevy 0.19 game engine and visual editor"
 rust-version = "1.95"
 
 [dependencies]
-bevy = { version = "0.19", default-features = false, features = ["2d", "3d", "ui", "bevy_dev_tools", "free_camera"] }
+bevy = { version = "0.19", default-features = false, features = ["2d", "3d", "ui", "bevy_dev_tools", "free_camera", "bevy_asset", "bevy_gltf"] }
+avian3d = { version = "0.7", default-features = false, features = ["3d", "parry-f32", "parallel"] }
 bevy_egui = "0.41.1"
 egui = "0.35"
 egui_dock = "0.20.1"
@@ -18,9 +19,10 @@ thiserror = "2"
 tracing = "0.1"
 
 [features]
-default = ["native-editor", "jackdaw-ui"]
+default = ["native-editor", "jackdaw-ui", "physics"]
 native-editor = []
 jackdaw-ui = []
+physics = []
 
 [profile.dev]
 opt-level = 1
