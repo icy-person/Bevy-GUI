@@ -12,6 +12,10 @@ pub enum EditorTab {
     Profiler,
     Plugins,
     Settings,
+    SystemGraph,
+    Events,
+    Query,
+    State,
 }
 
 impl EditorTab {
@@ -25,6 +29,10 @@ impl EditorTab {
             Self::Profiler => "Profiler",
             Self::Plugins => "Plugins",
             Self::Settings => "Settings",
+            Self::SystemGraph => "System Graph",
+            Self::Events => "Event Monitor",
+            Self::Query => "Query Visualizer",
+            Self::State => "State Editor",
         }
     }
 }
