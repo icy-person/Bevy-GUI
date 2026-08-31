@@ -33,7 +33,18 @@ jobs:
       - name: Cache
         uses: Swatinem/rust-cache@v2
       - name: Check all targets
-        run: cargo check --all-targets --all-features
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo check --all-targets --all-features 2>&1 | tee cargo-check.log
+      - name: Upload compiler diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cargo-check-diagnostics-${{ github.run_id }}
+          path: cargo-check.log
+          if-no-files-found: warn
+          retention-days: 7
       - name: Test all targets
         run: cargo test --all-targets --all-features
       - name: Clippy
