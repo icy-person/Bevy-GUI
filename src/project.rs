@@ -4,192 +4,37 @@ use std::{fs, io, path::{Path, PathBuf}};
 use thiserror::Error;
 
 #[derive(Resource, Debug, Clone, Serialize, Deserialize)]
-pub struct ProjectState {
-    pub name: String,
-    pub root: PathBuf,
-    pub dirty: bool,
-    pub mode: EditorMode,
-    pub main_scene: Option<PathBuf>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
-pub enum EditorMode {
-    #[default]
-    Edit,
-    Play,
-    Paused,
-}
-
-impl Default for ProjectState {
-    fn default() -> Self {
-        Self {
-            name: "Untitled Project".into(),
-            root: PathBuf::from("."),
-            dirty: false,
-            mode: EditorMode::Edit,
-            main_scene: None,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct ProjectManifest {
-    pub format_version: u32,
-    pub name: String,
-    pub main_scene: Option<String>,
-    pub asset_directory: String,
-    pub render_backend: String,
-}
-
-impl ProjectManifest {
-    pub fn from_state(state: &ProjectState) -> Self {
-        Self {
-            format_version: 1,
-            name: state.name.clone(),
-            main_scene: state.main_scene.as_ref().map(|path| path.display().to_string()),
-            asset_directory: "assets".into(),
-            render_backend: "auto".into(),
-        }
-    }
-
-    pub fn apply_to_state(&self, root: PathBuf) -> ProjectState {
-        ProjectState {
-            name: self.name.clone(),
-            root,
-            dirty: false,
-            mode: EditorMode::Edit,
-            main_scene: self.main_scene.as_ref().map(PathBuf::from),
-        }
-    }
-}
-
-#[derive(Debug, Error)]
-pub enum ProjectIoError {
-    #[error("failed to create project directory: {0}")]
-    CreateDirectory(#[source] io::Error),
-    #[error("failed to serialize project: {0}")]
-    Serialize(#[source] serde_json::Error),
-    #[error("failed to write project: {0}")]
-    Write(#[source] io::Error),
-    #[error("failed to read project: {0}")]
-    Read(#[source] io::Error),
-    #[error("failed to parse project: {0}")]
-    Parse(#[source] serde_json::Error),
-}
-
-pub fn project_file(root: &Path) -> PathBuf {
-    root.join("project.godot-rs.json")
-}
-
-pub fn save_project(root: &Path, state: &ProjectState) -> Result<(), ProjectIoError> {
-    fs::create_dir_all(root).map_err(ProjectIoError::CreateDirectory)?;
-    let document = ProjectManifest::from_state(state);
-    let json = serde_json::to_string_pretty(&document).map_err(ProjectIoError::Serialize)?;
-    fs::write(project_file(root), json).map_err(ProjectIoError::Write)
-}
-
-pub fn load_project(root: &Path) -> Result<ProjectState, ProjectIoError> {
-    let json = fs::read_to_string(project_file(root)).map_err(ProjectIoError::Read)?;
-    let manifest: ProjectManifest = serde_json::from_str(&json).map_err(ProjectIoError::Parse)?;
-    Ok(manifest.apply_to_state(root.to_path_buf()))
-}
-
-pub fn create_project(root: &Path, name: &str) -> Result<ProjectState, ProjectIoError> {
-    let display_name = name.trim();
-    fs::create_dir_all(root.join("assets")).map_err(ProjectIoError::CreateDirectory)?;
-    fs::create_dir_all(root.join("scenes")).map_err(ProjectIoError::CreateDirectory)?;
-    fs::create_dir_all(root.join("src")).map_err(ProjectIoError::CreateDirectory)?;
-    fs::create_dir_all(root.join(".bevy-gui")).map_err(ProjectIoError::CreateDirectory)?;
-
-    let main_scene = PathBuf::from("scenes/main.scene.json");
-    let state = ProjectState {
-        name: display_name.to_owned(),
-        root: root.to_path_buf(),
-        dirty: false,
-        mode: EditorMode::Edit,
-        main_scene: Some(main_scene.clone()),
-    };
-    save_project(root, &state)?;
-
-    let scene = crate::scene::SceneDocument {
-        format_version: 3,
-        entities: Vec::new(),
-    };
-    crate::scene::save_scene(&root.join(&main_scene), &scene)
-        .map_err(|error| ProjectIoError::Write(io::Error::other(error.to_string())))?;
-
-    let package_name = crate_name(display_name);
-    let cargo = format!(
-        "[package]\nname = \"{package_name}\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nbevy = {{ version = \"0.19\", features = [\"3d\"] }}\n"
-    );
-    fs::write(root.join("Cargo.toml"), cargo).map_err(ProjectIoError::Write)?;
-    fs::write(root.join("src/main.rs"), runtime_template()).map_err(ProjectIoError::Write)?;
-    fs::write(root.join(".gitignore"), "target/\n.bevy-gui/\n").map_err(ProjectIoError::Write)?;
-    fs::write(
-        root.join("README.md"),
-        format!(
-            "# {}\n\nCreated with Bevy-GUI.\n\nBuild the generated game with `cargo run --release`.\n",
-            state.name
-        ),
-    )
-    .map_err(ProjectIoError::Write)?;
-
-    Ok(state)
-}
-
-fn crate_name(name: &str) -> String {
-    let mut result = String::with_capacity(name.len());
-    for ch in name.chars() {
-        if ch.is_ascii_alphanumeric() || ch == '_' {
-            result.push(ch.to_ascii_lowercase());
-        } else if !result.ends_with('_') {
-            result.push('_');
-        }
-    }
-    let trimmed = result.trim_matches('_');
-    let fallback = if trimmed.is_empty() { "bevy_game" } else { trimmed };
-    if fallback.chars().next().is_some_and(|ch| ch.is_ascii_digit()) {
-        format!("game_{fallback}")
-    } else {
-        fallback.to_owned()
-    }
-}
-
-fn runtime_template() -> &'static str {
-    r#"use bevy::prelude::*;
+pub struct ProjectState { pub name:String, pub root:PathBuf, pub dirty:bool, pub mode:EditorMode, pub main_scene:Option<PathBuf> }
+#[derive(Debug,Clone,Copy,PartialEq,Eq,Serialize,Deserialize,Default)]pub enum EditorMode{#[default]Edit,Play,Paused}
+impl Default for ProjectState{fn default()->Self{Self{name:"Untitled Project".into(),root:PathBuf::from("."),dirty:false,mode:EditorMode::Edit,main_scene:None}}}
+#[derive(Debug,Clone,Serialize,Deserialize,Default)]pub struct ProjectManifest{pub format_version:u32,pub name:String,pub main_scene:Option<String>,pub asset_directory:String,pub render_backend:String}
+impl ProjectManifest{pub fn from_state(state:&ProjectState)->Self{Self{format_version:2,name:state.name.clone(),main_scene:state.main_scene.as_ref().map(|path|path.display().to_string()),asset_directory:"assets".into(),render_backend:"auto".into()}}pub fn apply_to_state(&self,root:PathBuf)->ProjectState{ProjectState{name:self.name.clone(),root,dirty:false,mode:EditorMode::Edit,main_scene:self.main_scene.as_ref().map(PathBuf::from)}}}
+#[derive(Debug,Error)]pub enum ProjectIoError{#[error("failed to create project directory: {0}")]CreateDirectory(#[source]io::Error),#[error("failed to serialize project: {0}")]Serialize(#[source]serde_json::Error),#[error("failed to write project: {0}")]Write(#[source]io::Error),#[error("failed to read project: {0}")]Read(#[source]io::Error),#[error("failed to parse project: {0}")]Parse(#[source]serde_json::Error)}
+pub fn project_file(root:&Path)->PathBuf{root.join("project.godot-rs.json")}
+pub fn save_project(root:&Path,state:&ProjectState)->Result<(),ProjectIoError>{fs::create_dir_all(root).map_err(ProjectIoError::CreateDirectory)?;let json=serde_json::to_string_pretty(&ProjectManifest::from_state(state)).map_err(ProjectIoError::Serialize)?;fs::write(project_file(root),json).map_err(ProjectIoError::Write)}
+pub fn load_project(root:&Path)->Result<ProjectState,ProjectIoError>{let json=fs::read_to_string(project_file(root)).map_err(ProjectIoError::Read)?;let manifest:ProjectManifest=serde_json::from_str(&json).map_err(ProjectIoError::Parse)?;Ok(manifest.apply_to_state(root.to_path_buf()))}
+pub fn create_project(root:&Path,name:&str)->Result<ProjectState,ProjectIoError>{let display_name=if name.trim().is_empty(){"Untitled Project"}else{name.trim()};for directory in [root.join("assets"),root.join("scenes"),root.join("src"),root.join(".bevy-gui")]{fs::create_dir_all(directory).map_err(ProjectIoError::CreateDirectory)?}let main_scene=PathBuf::from("scenes/main.scene.json");let state=ProjectState{name:display_name.to_owned(),root:root.to_path_buf(),dirty:false,mode:EditorMode::Edit,main_scene:Some(main_scene.clone())};save_project(root,&state)?;let scene=crate::scene::SceneDocument{format_version:4,entities:Vec::new()};crate::scene::save_scene(&root.join(&main_scene),&scene).map_err(|error|ProjectIoError::Write(io::Error::other(error.to_string())))?;let package_name=crate_name(display_name);let cargo=format!("[package]\nname = \"{package_name}\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nbevy = {{ version = \"0.19\", features = [\"3d\", \"bevy_asset\", \"bevy_gltf\"] }}\nbevy-gui = {{ git = \"https://github.com/icy-person/Bevy-GUI.git\", branch = \"main\" }}\n");fs::write(root.join("Cargo.toml"),cargo).map_err(ProjectIoError::Write)?;fs::write(root.join("src/main.rs"),runtime_template()).map_err(ProjectIoError::Write)?;fs::write(root.join(".gitignore"),"target/\n.bevy-gui/\n").map_err(ProjectIoError::Write)?;fs::write(root.join("README.md"),format!("# {}\n\nGenerated by Bevy-GUI.\n\n`cargo run --release` builds the standalone game.\n",state.name)).map_err(ProjectIoError::Write)?;Ok(state)}
+fn crate_name(name:&str)->String{let mut result=String::with_capacity(name.len());for ch in name.chars(){if ch.is_ascii_alphanumeric()||ch=='_'{result.push(ch.to_ascii_lowercase())}else if !result.ends_with('_'){result.push('_')}}let trimmed=result.trim_matches('_');let fallback=if trimmed.is_empty(){"bevy_game"}else{trimmed};if fallback.chars().next().is_some_and(|ch|ch.is_ascii_digit()){format!("game_{fallback}")}else{fallback.to_owned()}}
+fn runtime_template()->&'static str{r#"use bevy::prelude::*;
+use bevy_gui::{EngineRuntimeConfig, EngineRuntimePlugin};
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_systems(Startup, setup)
+        .insert_resource(EngineRuntimeConfig::with_scene("scenes/main.scene.json"))
+        .add_plugins(EngineRuntimePlugin)
+        .add_systems(Startup, setup_runtime)
         .run();
 }
 
-fn setup(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
+fn setup_runtime(mut commands: Commands) {
     commands.spawn((
         Camera3d::default(),
-        Transform::from_xyz(6.0, 4.5, 7.0).looking_at(Vec3::ZERO, Vec3::Y),
+        Transform::from_xyz(7.0, 5.0, 9.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));
     commands.spawn((
-        PointLight {
-            intensity: 1_800_000.0,
-            shadows_enabled: true,
-            ..default()
-        },
-        Transform::from_xyz(4.0, 6.0, 4.0),
-    ));
-    commands.spawn((
-        Mesh3d(meshes.add(Cuboid::new(2.0, 2.0, 2.0))),
-        MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: Color::srgb(0.2, 0.55, 0.95),
-            perceptual_roughness: 0.32,
-            ..default()
-        })),
+        DirectionalLight { illuminance: 12_000.0, shadows_enabled: true, ..default() },
+        Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.8, -0.5, 0.0)),
     ));
 }
-"#
-}
+"#}
