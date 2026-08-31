@@ -1,8 +1,7 @@
 //! Bevy-GUI: a plugin-first editor and game-engine platform built on Bevy 0.19.
 //! The editor, authored scene format, runtime bootstrap, diagnostics and engine
-//! services share one reusable Rust architecture. The UI layer combines the
-//! existing egui workflow with Bevy-native widgets inspired by the modern Bevy
-//! editor ecosystem.
+//! services share one reusable Rust architecture. The UI combines the mature
+//! egui workflow with Bevy-native widgets and engine-oriented tooling.
 
 pub mod app;
 pub mod asset_pipeline;
@@ -50,7 +49,7 @@ pub use prefab::{load_prefab, prefab_path, save_prefab, spawn_prefab, PrefabDocu
 pub use profiler::EditorProfiler;
 pub use project::{create_project, load_project, project_file, save_project, EditorMode, ProjectIoError, ProjectManifest, ProjectState};
 pub use runtime::PlaySession;
-pub use scene::{load_scene, save_scene, spawn_scene, SceneDocument, SceneEntity, SceneIoError, SceneNode};
+pub use scene::{load_scene, load_scene as load_authored_scene, save_scene, spawn_scene, spawn_scene_with_renderables, EditorPrimitive, SceneDocument, SceneEntity, SceneIoError, SceneNode, ScenePrimitive, SceneVisual};
 pub use scene_model::{EditorParent, SceneEditorState, SceneNodeModel};
 pub use scene_tools::{delete_subtree, duplicate_subtree, reparent_entity, validate_scene, SceneSelectionSet, SceneTool, SceneValidationReport};
 pub use selection::SelectionState;
